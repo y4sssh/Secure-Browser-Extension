@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Secure Browser Extension",
+  "description": "Evidence-driven browsing safety assistant.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "Secure Browser",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "assets/serviceWorker.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "downloads"
+  ],
+  "optional_permissions": [
+    "cookies",
+    "management"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "assets/contentScript.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
