@@ -1,8 +1,11 @@
 export function SignalGrid({ evidence }) {
   const signals = evidence?.signals ?? {};
+  const scores = evidence?.scores ?? {};
   const items = [
     ["HTTPS", signals.https ? "Yes" : "No"],
-    ["Forms", signals.formCount ?? 0],
+    ["URL risk", formatRisk(scores.urlRisk)],
+    ["Form risk", formatRisk(scores.formRisk)],
+    ["Redirects", signals.redirectCount ?? evidence?.redirect?.count ?? 0],
     ["Password fields", signals.passwordFieldCount ?? 0],
     ["Cross-origin posts", signals.formPostsCrossOrigin ? "Yes" : "No"],
   ];
@@ -17,4 +20,9 @@ export function SignalGrid({ evidence }) {
       ))}
     </dl>
   );
+}
+
+function formatRisk(value) {
+  if (!Number.isFinite(value)) return "0%";
+  return `${Math.round(value * 100)}%`;
 }
