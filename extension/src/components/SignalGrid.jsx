@@ -7,7 +7,11 @@ export function SignalGrid({ evidence }) {
     ["Form risk", formatRisk(scores.formRisk)],
     ["Redirects", signals.redirectCount ?? evidence?.redirect?.count ?? 0],
     ["Password fields", signals.passwordFieldCount ?? 0],
-    ["Cross-origin posts", signals.formPostsCrossOrigin ? "Yes" : "No"],
+    ["Cross-domain posts", signals.formPostsCrossDomain ? "Yes" : "No"],
+    ["HTTP submit", signals.formPostsToHttp ? "Yes" : "No"],
+    ["Delayed login", signals.delayedPasswordField || signals.formActionChanged ? "Yes" : "No"],
+    ["Iframe login", signals.iframeLogin || signals.suspectedCredentialIframeCount > 0 ? "Yes" : "No"],
+    ["Claimed brand", signals.claimedBrand || "None"],
   ];
 
   return (

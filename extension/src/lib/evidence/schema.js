@@ -1,7 +1,9 @@
-export const EVIDENCE_SCHEMA_VERSION = 1;
+export const EVIDENCE_SCHEMA_VERSION = 2;
 export const MAX_FORMS_PER_EVIDENCE = 10;
 export const MAX_REASONS_PER_EVIDENCE = 8;
 export const MAX_REDIRECT_CHAIN = 8;
+export const MAX_FORM_GUARD_TIMELINE = 12;
+export const MAX_CLAIMED_BRANDS = 4;
 
 export const VERDICTS = {
   TRUSTED: "trusted",
@@ -23,8 +25,10 @@ export function normalizeEvidence(payload = {}, sender = {}, context = {}) {
   const url = sanitizeUrl(payload.url ?? sender.tab?.url);
   const scores = normalizeScores(payload.scores);
   const redirect = normalizeRedirectInfo(payload.redirect, context.redirect);
+  const formGuard = normalizeFormGuard(payload.formGuard, payload.timeline);
   const signals = {
     ...(payload.signals ?? {}),
+    claimedBrands: normalizeStringList(payload.signals?.claimedBrands ?? formGuard.claimedBrands, MAX_CLAIMED_BRANDS),
     redirectCount: redirect.count,
   };
   const finalTrustScore = clampTrustScore(scores.finalTrustScore);
@@ -43,6 +47,8 @@ export function normalizeEvidence(payload = {}, sender = {}, context = {}) {
     redirect,
     signals,
     forms: normalizeForms(payload.forms),
+    formGuard,
+    timeline: formGuard.timeline,
     scores: {
       ...scores,
       finalTrustScore,
@@ -126,23 +132,69 @@ function normalizeScores(scores = {}) {
 function normalizeForms(forms) {
   if (!Array.isArray(forms)) return [];
   return forms.slice(0, MAX_FORMS_PER_EVIDENCE).map((form) => ({
+    id: sanitizeShortText(form.id, 48),
     method: form.method ?? "get",
+    pageProtocol: form.pageProtocol ?? "",
+    pageRegistrableDomain: sanitizeShortText(form.pageRegistrableDomain, 80),
+    topPageRegistrableDomain: sanitizeShortText(form.topPageRegistrableDomain, 80),
     actionProtocol: form.actionProtocol ?? "",
-    actionHost: form.actionHost ?? "",
-    actionOrigin: form.actionOrigin ?? "",
+    actionHost: sanitizeShortText(form.actionHost, 120),
+    actionOrigin: sanitizeShortText(form.actionOrigin, 160),
+    actionRegistrableDomain: sanitizeShortText(form.actionRegistrableDomain, 80),
     actionIsCrossOrigin: Boolean(form.actionIsCrossOrigin),
+    actionIsCrossDomain: Boolean(form.actionIsCrossDomain),
+    actionIsCrossTopLevelDomain: Boolean(form.actionIsCrossTopLevelDomain),
     hasExplicitAction: Boolean(form.hasExplicitAction),
     invalidAction: Boolean(form.invalidAction),
+    submitButtonActionCount: safeCount(form.submitButtonActionCount),
+    submitButtonCrossDomainActionCount: safeCount(form.submitButtonCrossDomainActionCount),
+    submitButtonInsecureActionCount: safeCount(form.submitButtonInsecureActionCount),
     inputCount: safeCount(form.inputCount),
+    visibleInputCount: safeCount(form.visibleInputCount),
     passwordFieldCount: safeCount(form.passwordFieldCount),
+    readonlyPasswordFieldCount: safeCount(form.readonlyPasswordFieldCount),
     hiddenInputCount: safeCount(form.hiddenInputCount),
     hiddenPasswordFieldCount: safeCount(form.hiddenPasswordFieldCount),
+    hiddenCredentialFieldCount: safeCount(form.hiddenCredentialFieldCount),
     emailFieldCount: safeCount(form.emailFieldCount),
     userLikeFieldCount: safeCount(form.userLikeFieldCount),
     autocompleteDisabled: Boolean(form.autocompleteDisabled),
+    antiAnalysisSignalCount: safeCount(form.antiAnalysisSignalCount),
+    pasteBlocked: Boolean(form.pasteBlocked),
+    labelHasLoginText: Boolean(form.labelHasLoginText),
+    loginTextSignalCount: safeCount(form.loginTextSignalCount),
     hasLoginText: Boolean(form.hasLoginText),
+    claimedBrands: normalizeStringList(form.claimedBrands, MAX_CLAIMED_BRANDS),
+    brandDomainMismatch: Boolean(form.brandDomainMismatch),
+    loginOverlay: Boolean(form.loginOverlay),
     insideIframe: Boolean(form.insideIframe),
     iframeDepth: safeCount(form.iframeDepth),
+  }));
+}
+
+function normalizeFormGuard(formGuard = {}, timelinePayload = []) {
+  const safeFormGuard = formGuard ?? {};
+
+  return {
+    pageHasLoginText: Boolean(safeFormGuard.pageHasLoginText),
+    loginTextSignalCount: safeCount(safeFormGuard.loginTextSignalCount),
+    claimedBrands: normalizeStringList(safeFormGuard.claimedBrands, MAX_CLAIMED_BRANDS),
+    timeline: normalizeTimeline(safeFormGuard.timeline ?? timelinePayload),
+  };
+}
+
+function normalizeTimeline(timeline) {
+  if (!Array.isArray(timeline)) return [];
+
+  return timeline.slice(-MAX_FORM_GUARD_TIMELINE).map((entry) => ({
+    event: sanitizeShortText(entry.event, 64),
+    trigger: sanitizeShortText(entry.trigger, 64),
+    elapsedMs: safeCount(entry.elapsedMs),
+    formCount: safeCount(entry.formCount),
+    loginFormCount: safeCount(entry.loginFormCount),
+    passwordFieldCount: safeCount(entry.passwordFieldCount),
+    crossDomainPasswordFormCount: safeCount(entry.crossDomainPasswordFormCount),
+    insecurePasswordSubmitCount: safeCount(entry.insecurePasswordSubmitCount),
   }));
 }
 
@@ -171,4 +223,21 @@ function normalizeRedirectInfo(payloadRedirect = {}, trackedRedirect = {}) {
 
 function safeCount(value) {
   return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+function normalizeStringList(values, limit) {
+  if (!Array.isArray(values)) return [];
+
+  return values
+    .filter((value) => typeof value === "string" && value.trim().length > 0)
+    .map((value) => sanitizeShortText(value, 80))
+    .filter((value, index, allValues) => allValues.indexOf(value) === index)
+    .slice(0, limit);
+}
+
+function sanitizeShortText(value, maxLength) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }

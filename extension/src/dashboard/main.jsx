@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RefreshCw, ShieldCheck } from "lucide-react";
 import { EvidenceReasons } from "../components/EvidenceReasons";
+import { FormGuardTimeline } from "../components/FormGuardTimeline";
 import { SignalGrid } from "../components/SignalGrid";
 import { TrustMeter } from "../components/TrustMeter";
 import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
@@ -96,6 +97,7 @@ function DashboardApp() {
                 </div>
                 <SignalGrid evidence={item} />
                 <EvidenceReasons reasons={item.reasons} />
+                <FormGuardTimeline timeline={item.formGuard?.timeline ?? item.timeline} />
                 <div className="meta-row">
                   <span>{formatTimestamp(item.timestamp)}</span>
                   <span>{item.trigger}</span>
