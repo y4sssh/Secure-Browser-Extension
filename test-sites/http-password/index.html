@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTTP Password Demo</title>
+  </head>
+  <body>
+    <main>
+      <h1>Sign in over HTTP</h1>
+      <form method="post" action="http://localhost:8080/http-password/session">
+        <label for="http-user">Username</label>
+        <input id="http-user" name="username" autocomplete="username" />
+
+        <label for="http-password">Password</label>
+        <input id="http-password" name="password" type="password" autocomplete="current-password" />
+
+        <button type="submit">Sign in</button>
+      </form>
+    </main>
+  </body>
+</html>

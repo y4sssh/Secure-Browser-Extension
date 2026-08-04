@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login Frame</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: Arial, sans-serif;
+        color: #17202a;
+      }
+
+      label,
+      input,
+      button {
+        display: block;
+        width: 100%;
+      }
+
+      label {
+        margin-top: 14px;
+        font-weight: 700;
+      }
+
+      input {
+        margin-top: 6px;
+        min-height: 38px;
+      }
+
+      button {
+        min-height: 40px;
+        margin-top: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <form method="post" action="/iframe-login/session">
+      <h1>Sign in</h1>
+      <label for="frame-email">Email</label>
+      <input id="frame-email" name="email" type="email" autocomplete="username" />
+
+      <label for="frame-password">Password</label>
+      <input id="frame-password" name="password" type="password" autocomplete="current-password" />
+
+      <button type="submit">Continue</button>
+    </form>
+  </body>
+</html>
