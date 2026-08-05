@@ -492,7 +492,7 @@ Acceptance criteria:
 
 ## Phase 4 - Backend API
 
-Goal: Add FastAPI backend for reputation, reports, and ML.
+Goal: Implement a minimal, documented FastAPI backend that provides reputation/query endpoints, accepts sanitized evidence, and can be extended with ML inference and reporting.
 
 Endpoints:
 
@@ -820,6 +820,145 @@ Tasks:
 - Detect iframe login forms.
 - Detect hidden password fields.
 - Create event timeline.
+Overview:
+
+- Deliver a small FastAPI app scaffold in `backend/` that can be run locally for development and testing.
+- Provide clear API specs, request/response examples, and a required-dependencies list so frontend/extension teams can integrate quickly.
+- Ensure privacy rules are enforced: no raw passwords, cookies, or full page bodies are accepted by default.
+
+Files to create (suggested):
+
+- `backend/app/main.py` — FastAPI application and route registration.
+- `backend/app/config.py` — load environment variables and app configuration.
+- `backend/app/api/__init__.py` — router registry.
+- `backend/app/api/health.py` — `/health` endpoint.
+- `backend/app/api/analyze.py` — `/api/v1/analyze/url` and related endpoints.
+- `backend/app/api/evidence.py` — `/api/v1/evidence` ingestion endpoint.
+- `backend/app/db/client.py` — MongoDB connection helper.
+- `backend/requirements.txt` — pinned Python dependencies.
+- `backend/.env.example` — environment variable examples.
+- `backend/tests/test_health.py` — simple pytest to validate startup.
+
+Minimal example `app/main.py` (for docs only — create file later):
+
+```python
+from fastapi import FastAPI
+from app.api.health import router as health_router
+from app.api.analyze import router as analyze_router
+from app.api.evidence import router as evidence_router
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Secure Browser Backend")
+    app.include_router(health_router)
+    app.include_router(analyze_router, prefix="/api/v1")
+    app.include_router(evidence_router, prefix="/api/v1")
+    return app
+
+app = create_app()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+```
+
+Example `backend/requirements.txt` (docs):
+
+```
+fastapi>=0.95
+uvicorn[standard]>=0.22
+python-dotenv>=1.0
+pymongo>=4.2
+pydantic>=2.0
+pytest>=8.0
+```
+
+Example `backend/.env.example` (docs):
+
+```text
+SECURE_BROWSER_ENV=development
+SECURE_BROWSER_MONGODB_URI=mongodb://localhost:27017
+SECURE_BROWSER_DB_NAME=secure_browser
+SECURE_BROWSER_VT_API_KEY=
+SECURE_BROWSER_ALLOWED_ORIGINS=http://localhost:5173,chrome-extension://EXTENSION_ID
+```
+
+Primary endpoints (detailed contract):
+
+- `GET /health`
+  - Response: `{ "status": "ok" }`
+
+- `POST /api/v1/analyze/url`
+  - Request: `{ "url": "https://example.com/login", "redirectChain": ["https://r1","https://r2"] }`
+  - Response: `{ "urlRisk": 0.63, "features": { ... }, "modelVersion": "url-xgb-v1" }`
+
+- `POST /api/v1/evidence`
+  - Request: sanitized evidence object (no raw secrets):
+    ```json
+    {
+      "clientId": "local-anonymous-id",
+      "pageEvidence": {
+        "urlHash": "sha256-url-hash",
+        "hostname": "example.com",
+        "signals": { },
+        "scores": { },
+        "reasons": []
+      }
+    }
+    ```
+  - Response: `{ "stored": true, "serverRisk": 0.72, "recommendations": [ ... ] }`
+
+- `POST /api/v1/reputation/virustotal/url` and `/file-hash`
+  - Proxy endpoints for backend-only VirusTotal lookups (API key always server-side).
+
+- `GET /api/v1/reports/weekly`
+  - Response: weekly report JSON for client (requires client id filter).
+
+- `POST /api/v1/chat/explain`
+  - Request: `{ "question": "Why is this risky?", "evidence": { ... } }`
+  - Response: `{ "answer": "..." }` (structured explanation, no new raw data accepted)
+
+Database collections (mapping):
+
+- `page_analyses` — sanitized per-page evidence + scores + model_versions
+- `alerts` — generated alerts with severity and reasons
+- `events` — optional audit log of ingestion and API calls (no raw secrets)
+- `downloads`, `cookie_findings`, `password_findings`, `extension_findings`, `weekly_reports`, `model_versions`
+
+Security & privacy rules (enforced by backend):
+
+- Reject ingestion requests that contain raw password values, cookie values, or full page HTML bodies.
+- Validate and sanitize all incoming fields; store only hashes or metadata where appropriate.
+- Rate-limit and authenticate sensitive endpoints; by default allow anonymous ingest with `clientId` but require auth for report retrieval.
+
+Run & dev commands (docs):
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Testing (quick sanity):
+
+```bash
+cd backend
+pytest -q
+```
+
+Acceptance criteria (expanded):
+
+- `uvicorn app.main:app --reload` starts the backend without startup errors.
+- `GET /health` returns `{ "status": "ok" }`.
+- `POST /api/v1/evidence` accepts a sanitized evidence payload and stores a record in `page_analyses` (or `events`) in MongoDB.
+- `POST /api/v1/analyze/url` returns a URL risk object (initially rule-based values are acceptable).
+- VirusTotal-related endpoints do not expose the API key to clients and return results only from server-side queries.
+
+Notes and next steps:
+
+- After this doc change, the next practical step is to scaffold the `backend/` files listed above and add one or two minimal endpoints (`/health`, `/api/v1/evidence`) to validate the integration with the extension.
+- If you want, I can now create the backend scaffold files and run the tests locally.
 - Improve alert UI with evidence.
 
 Definition of done:
