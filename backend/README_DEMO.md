@@ -15,3 +15,4 @@ Endpoints:
 
 - `GET /health` — returns `{ "status": "ok" }`
 - `POST /api/v1/evidence` — accepts sanitized JSON evidence (rejects payloads containing the strings `password`, `cookie`, or `pageBody`) and appends to `backend/data/evidence.jsonl`.
+- `POST /api/v1/analyze/text` — accepts explicit-consent, short sanitized text snippets and returns a Phase 6 text-risk score.

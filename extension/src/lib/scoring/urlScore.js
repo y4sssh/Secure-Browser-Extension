@@ -1,3 +1,5 @@
+import { BRAND_PROFILES, isAllowedBrandHostByKey } from "../brand/brandProfiles.js";
+
 const SUSPICIOUS_TLDS = new Set([
   "accountant",
   "best",
@@ -48,21 +50,6 @@ const SUSPICIOUS_TOKENS = [
   "verify",
   "wallet",
 ];
-
-const BRAND_DOMAINS = {
-  amazon: ["amazon.com", "amazon.in", "amazon.co.uk", "aws.amazon.com"],
-  apple: ["apple.com", "icloud.com"],
-  facebook: ["facebook.com", "fb.com", "meta.com"],
-  google: ["google.com", "gmail.com", "google.co.in", "accounts.google.com"],
-  hdfc: ["hdfcbank.com"],
-  icici: ["icicibank.com"],
-  instagram: ["instagram.com"],
-  microsoft: ["microsoft.com", "microsoftonline.com", "live.com", "office.com", "outlook.com"],
-  netflix: ["netflix.com"],
-  paypal: ["paypal.com"],
-  sbi: ["onlinesbi.sbi", "sbi.co.in"],
-  whatsapp: ["whatsapp.com"],
-};
 
 const COMMON_SECOND_LEVEL_TLDS = new Set(["ac", "co", "com", "edu", "gov", "net", "org"]);
 const IPV4_PATTERN = /^(?:\d{1,3}\.){3}\d{1,3}$/;
@@ -201,12 +188,11 @@ function countSuspiciousTokens(pathname, search) {
 
 function collectBrandKeywords(hostname, pathname, search) {
   const haystack = `${hostname} ${pathname} ${search}`.toLowerCase();
-  return Object.keys(BRAND_DOMAINS).filter((brand) => haystack.includes(brand));
+  return Object.keys(BRAND_PROFILES).filter((brand) => haystack.includes(brand));
 }
 
 function isAllowedBrandHost(brand, hostname, registrableDomain) {
-  const allowedDomains = BRAND_DOMAINS[brand] ?? [];
-  return allowedDomains.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`) || registrableDomain === domain);
+  return isAllowedBrandHostByKey(brand, hostname, registrableDomain);
 }
 
 function getSubdomainCount(hostname) {

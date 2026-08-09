@@ -1,66 +1,19 @@
 import { calculateFinalScore } from "../lib/scoring/finalScore";
+import { collectKnownBrands, isAllowedBrandHost } from "../lib/brand/brandProfiles.js";
+import { scoreBrandGuard } from "../lib/scoring/brandGuardScore.js";
 import { scoreForms } from "../lib/scoring/formScore";
 import { getRegistrableDomain, scoreUrl } from "../lib/scoring/urlScore";
 
 const MAX_FORMS = 15;
 const MAX_IFRAMES = 8;
 const MAX_TIMELINE_EVENTS = 12;
+const MAX_TEXT_SNIPPETS = 16;
+const MAX_TEXT_SNIPPET_LENGTH = 120;
 const MAX_TEXT_FRAGMENT_LENGTH = 240;
 const LOGIN_TEXT_PATTERN =
   /\b(log\s*in|sign\s*in|signin|password|passcode|otp|verify|verification|account|username|email|credential|sso|authenticate)\b/i;
 const USER_FIELD_PATTERN = /\b(user(name)?|email|login|account|phone|mobile|identifier)\b/i;
 const SECURITY_ACTION_PATTERN = /\b(login|signin|sign-in|auth|authenticate|session|sso|oauth|account|verify|password|credential)\b/i;
-
-const BRAND_PROFILES = {
-  amazon: {
-    label: "Amazon",
-    domains: ["amazon.com", "amazon.in", "amazon.co.uk", "aws.amazon.com"],
-  },
-  apple: {
-    label: "Apple",
-    domains: ["apple.com", "icloud.com"],
-  },
-  facebook: {
-    label: "Facebook",
-    domains: ["facebook.com", "fb.com", "meta.com"],
-  },
-  google: {
-    label: "Google",
-    domains: ["google.com", "gmail.com", "google.co.in", "accounts.google.com"],
-  },
-  hdfc: {
-    label: "HDFC",
-    domains: ["hdfcbank.com"],
-  },
-  icici: {
-    label: "ICICI",
-    domains: ["icicibank.com"],
-  },
-  instagram: {
-    label: "Instagram",
-    domains: ["instagram.com"],
-  },
-  microsoft: {
-    label: "Microsoft",
-    domains: ["microsoft.com", "microsoftonline.com", "live.com", "office.com", "outlook.com"],
-  },
-  netflix: {
-    label: "Netflix",
-    domains: ["netflix.com"],
-  },
-  paypal: {
-    label: "PayPal",
-    domains: ["paypal.com"],
-  },
-  sbi: {
-    label: "SBI",
-    domains: ["onlinesbi.sbi", "sbi.co.in"],
-  },
-  whatsapp: {
-    label: "WhatsApp",
-    domains: ["whatsapp.com"],
-  },
-};
 
 const formGuardState = {
   startedAt: Date.now(),
@@ -90,8 +43,16 @@ export function scanPage(trigger = "document_idle") {
     claimedBrands: pageContext.claimedBrands,
     timeline,
   });
-  const finalResult = calculateFinalScore({ urlResult, formResult });
+  const brandResult = scoreBrandGuard({
+    pageUrl: pageUrl.href,
+    claimedBrands: pageContext.claimedBrands,
+    forms: formScan.forms,
+    textSignals: pageContext.textSignals,
+    urlFeatures: urlResult.features,
+  });
+  const finalResult = calculateFinalScore({ urlResult, formResult, brandResult });
   const aggregate = formResult.aggregate;
+  const brandFeatures = brandResult.features;
 
   return {
     url: safePageUrl,
@@ -125,6 +86,8 @@ export function scanPage(trigger = "document_idle") {
       loginOverlay: aggregate.loginOverlayCount > 0,
       claimedBrand: pageContext.claimedBrands[0] ?? "",
       claimedBrands: pageContext.claimedBrands,
+      brandActualDomain: brandFeatures.actualDomain,
+      brandExpectedDomains: brandFeatures.expectedDomains,
       brandFormDomainMismatch: aggregate.brandedCrossDomainCredentialFormCount > 0,
       redirectCount,
       pathLength: pageUrl.pathname.length,
@@ -133,12 +96,19 @@ export function scanPage(trigger = "document_idle") {
       titleLength: document.title?.length ?? 0,
       excessiveSubdomains: urlResult.features.excessiveSubdomains,
       domainLooksRandom: urlResult.features.domainLooksRandom,
-      brandDomainMismatch: urlResult.features.brandDomainMismatch || aggregate.brandedCrossDomainCredentialFormCount > 0,
+      brandDomainMismatch:
+        brandFeatures.domainMismatch ||
+        urlResult.features.brandDomainMismatch ||
+        aggregate.brandedCrossDomainCredentialFormCount > 0,
+      textRisk: brandFeatures.textRisk,
+      textSnippetCount: brandFeatures.textSnippetCount,
       iframeDepth: window.top === window ? 0 : 1,
     },
     features: {
       url: urlResult.features,
       forms: aggregate,
+      brandGuard: brandFeatures,
+      textSignals: pageContext.textSignals,
       formGuard: {
         pageHasLoginText: pageContext.hasLoginText,
         pageLoginTextSignalCount: pageContext.loginTextSignalCount,
@@ -152,6 +122,8 @@ export function scanPage(trigger = "document_idle") {
       claimedBrands: pageContext.claimedBrands,
       timeline,
     },
+    brandGuard: brandFeatures,
+    textSignals: pageContext.textSignals,
     timeline,
     forms: formScan.forms.slice(0, MAX_FORMS),
     scores: finalResult.scores,
@@ -241,7 +213,7 @@ function collectFormEvidence(form, index, context) {
   const submitButtonActions = collectSubmitButtonActions(form, pageUrl.href, pageRegistrableDomain);
   const claimedBrands = collectKnownBrands([
     context.pageContext?.brandHaystack ?? "",
-    getLimitedText(form.textContent),
+    ...getFormTextCues(form, ownerDocument),
     ...inputs.map((input) => getFieldMetadata(input, ownerDocument)),
   ]);
   const actionHost = actionUrl.hostname.toLowerCase();
@@ -301,20 +273,78 @@ function collectFormEvidence(form, index, context) {
 }
 
 function collectPageContext(ownerDocument) {
-  const fragments = [
-    ownerDocument.title,
-    ...Array.from(ownerDocument.querySelectorAll("h1, h2, h3, label, button, input, textarea, select, img[alt], [aria-label]"))
-      .slice(0, 80)
-      .map((element) => getElementTextCue(element)),
-  ].filter(Boolean);
-  const brandHaystack = fragments.map(getLimitedText).join(" ");
+  const textSignals = collectSafeTextSignals(ownerDocument);
+  const fragments = textSignals.snippets.map((snippet) => snippet.text);
+  const brandHaystack = fragments.join(" ");
 
   return {
     hasLoginText: fragments.some((fragment) => LOGIN_TEXT_PATTERN.test(fragment)),
     loginTextSignalCount: fragments.filter((fragment) => LOGIN_TEXT_PATTERN.test(fragment)).length,
     claimedBrands: collectKnownBrands(fragments),
     brandHaystack,
+    textSignals,
   };
+}
+
+function collectSafeTextSignals(ownerDocument) {
+  const candidates = [
+    { source: "title", text: ownerDocument.title },
+    ...collectElementTextCues(ownerDocument, "h1, h2, h3", "heading", 12),
+    ...collectElementTextCues(ownerDocument, "button, input[type='button'], input[type='submit']", "button", 12),
+    ...collectElementTextCues(ownerDocument, "label", "label", 16),
+    ...collectElementTextCues(ownerDocument, "input, textarea, select", "field", 24),
+    ...collectElementTextCues(ownerDocument, "img[alt], [aria-label]", "accessible-label", 16),
+  ];
+  const snippets = [];
+  const redactions = {
+    emails: 0,
+    numbers: 0,
+    tokens: 0,
+    longStrings: 0,
+  };
+
+  for (const candidate of candidates) {
+    const result = sanitizeTextSnippet(candidate.text);
+    if (!result.text || snippets.some((snippet) => snippet.text === result.text)) {
+      continue;
+    }
+
+    snippets.push({
+      source: candidate.source,
+      text: result.text,
+    });
+    redactions.emails += result.redactions.emails;
+    redactions.numbers += result.redactions.numbers;
+    redactions.tokens += result.redactions.tokens;
+    redactions.longStrings += result.redactions.longStrings;
+
+    if (snippets.length >= MAX_TEXT_SNIPPETS) {
+      break;
+    }
+  }
+
+  const textValues = snippets.map((snippet) => snippet.text);
+
+  return {
+    snippets,
+    snippetCount: snippets.length,
+    sources: snippets
+      .map((snippet) => snippet.source)
+      .filter((source, index, sources) => sources.indexOf(source) === index),
+    redactions,
+    redactionCount: redactions.emails + redactions.numbers + redactions.tokens + redactions.longStrings,
+    hasLoginText: textValues.some((fragment) => LOGIN_TEXT_PATTERN.test(fragment)),
+    loginTextSignalCount: textValues.filter((fragment) => LOGIN_TEXT_PATTERN.test(fragment)).length,
+    claimedBrands: collectKnownBrands(textValues),
+  };
+}
+
+function collectElementTextCues(ownerDocument, selector, source, limit) {
+  return Array.from(ownerDocument.querySelectorAll(selector))
+    .filter((element) => isElementProbablyVisible(element, ownerDocument.defaultView ?? window))
+    .slice(0, limit)
+    .map((element) => ({ source, text: getElementTextCue(element) }))
+    .filter((item) => item.text);
 }
 
 function getElementTextCue(element) {
@@ -331,6 +361,42 @@ function getElementTextCue(element) {
     .filter(Boolean)
     .map(getLimitedText)
     .join(" ");
+}
+
+function sanitizeTextSnippet(value) {
+  const redactions = {
+    emails: 0,
+    numbers: 0,
+    tokens: 0,
+    longStrings: 0,
+  };
+  let text = String(value ?? "").replace(/\s+/g, " ").trim();
+
+  text = replaceAndCount(text, /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[email]", (count) => {
+    redactions.emails += count;
+  });
+  text = replaceAndCount(text, /\b(?:[a-f0-9]{24,}|[A-Za-z0-9+/_=-]{32,})\b/g, "[token]", (count) => {
+    redactions.tokens += count;
+  });
+  text = replaceAndCount(text, /\b\+?\d[\d\s().-]{3,}\d\b/g, "[number]", (count) => {
+    redactions.numbers += count;
+  });
+  text = replaceAndCount(text, /\b[^\s]{40,}\b/g, "[long]", (count) => {
+    redactions.longStrings += count;
+  });
+
+  return {
+    text: text.slice(0, MAX_TEXT_SNIPPET_LENGTH),
+    redactions,
+  };
+}
+
+function replaceAndCount(value, pattern, replacement, onCount) {
+  const matches = value.match(pattern) ?? [];
+  if (matches.length > 0) {
+    onCount(matches.length);
+  }
+  return value.replace(pattern, replacement);
 }
 
 function getActionUrl(form, pageHref) {
@@ -438,11 +504,16 @@ function getFieldLabelText(input, ownerDocument) {
 }
 
 function countLoginTextSignals(form, ownerDocument) {
-  const fragments = [
+  const fragments = getFormTextCues(form, ownerDocument);
+
+  return fragments.filter((fragment) => LOGIN_TEXT_PATTERN.test(fragment)).length;
+}
+
+function getFormTextCues(form, ownerDocument) {
+  return [
     form.getAttribute("aria-label"),
     form.getAttribute("name"),
     form.getAttribute("id"),
-    form.textContent,
     ...Array.from(form.querySelectorAll("input, button, label, textarea, select")).map((element) =>
       element.tagName === "INPUT" || element.tagName === "TEXTAREA" || element.tagName === "SELECT"
         ? getFieldMetadata(element, ownerDocument)
@@ -451,8 +522,6 @@ function countLoginTextSignals(form, ownerDocument) {
   ]
     .filter(Boolean)
     .map(getLimitedText);
-
-  return fragments.filter((fragment) => LOGIN_TEXT_PATTERN.test(fragment)).length;
 }
 
 function countAntiAnalysisSignals(form, inputs) {
@@ -525,23 +594,12 @@ function isElementVisuallyHidden(element, ownerWindow) {
   );
 }
 
-function collectKnownBrands(fragments) {
-  const haystack = fragments.filter(Boolean).join(" ").toLowerCase();
-  return Object.entries(BRAND_PROFILES)
-    .filter(([brand]) => new RegExp(`\\b${escapeRegExp(brand)}\\b`, "i").test(haystack))
-    .map(([, profile]) => profile.label)
-    .slice(0, 4);
-}
+function isElementProbablyVisible(element, ownerWindow) {
+  if (!element || element.hidden) return false;
+  if (element.tagName === "INPUT" && getInputType(element) === "hidden") return false;
 
-function isAllowedBrandHost(label, hostname, registrableDomain) {
-  const brandKey = Object.keys(BRAND_PROFILES).find((key) => BRAND_PROFILES[key].label === label);
-  const allowedDomains = BRAND_PROFILES[brandKey]?.domains ?? [];
-
-  if (!hostname || allowedDomains.length === 0) {
-    return false;
-  }
-
-  return allowedDomains.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`) || registrableDomain === domain);
+  const style = ownerWindow.getComputedStyle(element);
+  return style.display !== "none" && style.visibility !== "hidden" && Number.parseFloat(style.opacity) !== 0;
 }
 
 function createFormGuardSnapshot(forms, formScan, pageContext) {
@@ -700,8 +758,4 @@ function getLimitedText(value) {
 
 function safeCount(value) {
   return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

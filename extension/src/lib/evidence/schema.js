@@ -1,9 +1,11 @@
-export const EVIDENCE_SCHEMA_VERSION = 2;
+export const EVIDENCE_SCHEMA_VERSION = 3;
 export const MAX_FORMS_PER_EVIDENCE = 10;
 export const MAX_REASONS_PER_EVIDENCE = 8;
 export const MAX_REDIRECT_CHAIN = 8;
 export const MAX_FORM_GUARD_TIMELINE = 12;
 export const MAX_CLAIMED_BRANDS = 4;
+export const MAX_TEXT_SNIPPETS = 12;
+export const MAX_TEXT_SNIPPET_LENGTH = 120;
 
 export const VERDICTS = {
   TRUSTED: "trusted",
@@ -26,9 +28,28 @@ export function normalizeEvidence(payload = {}, sender = {}, context = {}) {
   const scores = normalizeScores(payload.scores);
   const redirect = normalizeRedirectInfo(payload.redirect, context.redirect);
   const formGuard = normalizeFormGuard(payload.formGuard, payload.timeline);
+  const textSignals = normalizeTextSignals(payload.textSignals ?? payload.features?.textSignals);
+  const brandGuard = normalizeBrandGuard(payload.brandGuard ?? payload.features?.brandGuard, {
+    signals: payload.signals,
+    formGuard,
+    textSignals,
+    hostname: payload.hostname ?? getHostname(url),
+  });
   const signals = {
     ...(payload.signals ?? {}),
-    claimedBrands: normalizeStringList(payload.signals?.claimedBrands ?? formGuard.claimedBrands, MAX_CLAIMED_BRANDS),
+    claimedBrand: sanitizeShortText(payload.signals?.claimedBrand ?? brandGuard.claimedBrand, 80),
+    claimedBrands: normalizeStringList(
+      payload.signals?.claimedBrands ?? brandGuard.claimedBrands ?? formGuard.claimedBrands,
+      MAX_CLAIMED_BRANDS,
+    ),
+    brandActualDomain: sanitizeShortText(payload.signals?.brandActualDomain ?? brandGuard.actualDomain, 80),
+    brandExpectedDomains: normalizeStringList(
+      payload.signals?.brandExpectedDomains ?? brandGuard.expectedDomains,
+      MAX_CLAIMED_BRANDS,
+    ),
+    brandDomainMismatch: Boolean(payload.signals?.brandDomainMismatch || brandGuard.domainMismatch),
+    textRisk: clampRiskScore(payload.signals?.textRisk ?? brandGuard.textRisk),
+    textSnippetCount: safeCount(payload.signals?.textSnippetCount ?? textSignals.snippetCount),
     redirectCount: redirect.count,
   };
   const finalTrustScore = clampTrustScore(scores.finalTrustScore);
@@ -48,6 +69,8 @@ export function normalizeEvidence(payload = {}, sender = {}, context = {}) {
     signals,
     forms: normalizeForms(payload.forms),
     formGuard,
+    brandGuard,
+    textSignals,
     timeline: formGuard.timeline,
     scores: {
       ...scores,
@@ -181,6 +204,73 @@ function normalizeFormGuard(formGuard = {}, timelinePayload = []) {
     claimedBrands: normalizeStringList(safeFormGuard.claimedBrands, MAX_CLAIMED_BRANDS),
     timeline: normalizeTimeline(safeFormGuard.timeline ?? timelinePayload),
   };
+}
+
+function normalizeBrandGuard(brandGuard = {}, fallback = {}) {
+  const safeBrandGuard = brandGuard ?? {};
+  const fallbackSignals = fallback.signals ?? {};
+  const fallbackClaimedBrands = normalizeStringList(
+    safeBrandGuard.claimedBrands ?? fallbackSignals.claimedBrands ?? fallback.formGuard?.claimedBrands,
+    MAX_CLAIMED_BRANDS,
+  );
+  const claimedBrand = sanitizeShortText(
+    safeBrandGuard.claimedBrand ?? fallbackSignals.claimedBrand ?? fallbackClaimedBrands[0],
+    80,
+  );
+
+  return {
+    actualHostname: sanitizeShortText(
+      safeBrandGuard.actualHostname ?? fallbackSignals.hostname ?? fallback.hostname,
+      120,
+    ),
+    actualDomain: sanitizeShortText(safeBrandGuard.actualDomain ?? fallbackSignals.brandActualDomain, 80),
+    claimedBrand,
+    claimedBrands: fallbackClaimedBrands,
+    expectedDomains: normalizeStringList(
+      safeBrandGuard.expectedDomains ?? fallbackSignals.brandExpectedDomains,
+      MAX_CLAIMED_BRANDS,
+    ),
+    mismatchBrands: normalizeStringList(safeBrandGuard.mismatchBrands, MAX_CLAIMED_BRANDS),
+    domainMismatch: Boolean(safeBrandGuard.domainMismatch || fallbackSignals.brandDomainMismatch),
+    credentialContext: Boolean(safeBrandGuard.credentialContext),
+    textRisk: clampRiskScore(safeBrandGuard.textRisk ?? fallbackSignals.textRisk),
+    textSnippetCount: safeCount(safeBrandGuard.textSnippetCount ?? fallback.textSignals?.snippetCount),
+    textSources: normalizeStringList(safeBrandGuard.textSources, 8),
+    cloudAnalysisEligible: Boolean(safeBrandGuard.cloudAnalysisEligible),
+    cloudAiEnabled: Boolean(safeBrandGuard.cloudAiEnabled),
+    localModelVersion: sanitizeShortText(safeBrandGuard.localModelVersion, 48),
+  };
+}
+
+function normalizeTextSignals(textSignals = {}) {
+  const safeTextSignals = textSignals ?? {};
+  const redactions = safeTextSignals.redactions ?? {};
+  const snippets = normalizeTextSnippets(safeTextSignals.snippets);
+
+  return {
+    snippets,
+    snippetCount: safeCount(safeTextSignals.snippetCount) || snippets.length,
+    sources: normalizeStringList(safeTextSignals.sources, 8),
+    redactions: {
+      emails: safeCount(redactions.emails),
+      numbers: safeCount(redactions.numbers),
+      tokens: safeCount(redactions.tokens),
+      longStrings: safeCount(redactions.longStrings),
+    },
+    redactionCount: safeCount(safeTextSignals.redactionCount),
+    hasLoginText: Boolean(safeTextSignals.hasLoginText),
+    loginTextSignalCount: safeCount(safeTextSignals.loginTextSignalCount),
+    claimedBrands: normalizeStringList(safeTextSignals.claimedBrands, MAX_CLAIMED_BRANDS),
+  };
+}
+
+function normalizeTextSnippets(snippets) {
+  if (!Array.isArray(snippets)) return [];
+
+  return snippets.slice(0, MAX_TEXT_SNIPPETS).map((snippet) => ({
+    source: sanitizeShortText(snippet.source ?? "text", 32),
+    text: sanitizeShortText(snippet.text ?? snippet, MAX_TEXT_SNIPPET_LENGTH),
+  }));
 }
 
 function normalizeTimeline(timeline) {

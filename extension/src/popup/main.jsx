@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ExternalLink, LayoutDashboard, RefreshCw } from "lucide-react";
+import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
 import { FormGuardTimeline } from "../components/FormGuardTimeline";
 import { SignalGrid } from "../components/SignalGrid";
@@ -65,6 +66,7 @@ function PopupApp() {
         <>
           <TrustMeter score={score} />
           <SignalGrid evidence={evidence} />
+          <BrandGuardSummary evidence={evidence} />
           <EvidenceReasons reasons={evidence.reasons} />
           <FormGuardTimeline timeline={evidence.formGuard?.timeline ?? evidence.timeline} />
           <div className="meta-row">

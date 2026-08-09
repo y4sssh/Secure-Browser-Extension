@@ -7,7 +7,9 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test:phase3": "node --test tests/formGuard.test.js"
+    "test": "node --test tests/*.test.js",
+    "test:phase3": "node --test tests/formGuard.test.js",
+    "test:phase6": "node --test tests/brandGuard.test.js"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

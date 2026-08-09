@@ -15,13 +15,14 @@ const ALERT_SEVERITIES = {
 export function calculateFinalScore({
   urlResult,
   formResult,
+  brandResult,
   brandRisk = 0,
   downloadRisk = 0,
   extensionExposureRisk = 0,
 } = {}) {
   const urlRisk = clampRisk(urlResult?.risk);
   const formRisk = clampRisk(formResult?.risk);
-  const normalizedBrandRisk = clampRisk(brandRisk);
+  const normalizedBrandRisk = clampRisk(brandResult?.risk ?? brandRisk);
   const normalizedDownloadRisk = clampRisk(downloadRisk);
   const normalizedExtensionRisk = clampRisk(extensionExposureRisk);
   const weightedRisk =
@@ -35,7 +36,7 @@ export function calculateFinalScore({
     Math.max(urlRisk, formRisk, normalizedBrandRisk, normalizedDownloadRisk, normalizedExtensionRisk, weightedRisk) + synergyRisk,
   );
   const finalTrustScore = clampTrustScore(100 - Math.round(finalRisk * 100));
-  const reasons = collectTopReasons(urlResult?.reasons, formResult?.reasons);
+  const reasons = collectTopReasons(urlResult?.reasons, formResult?.reasons, brandResult?.reasons);
 
   if (reasons.length === 0) {
     reasons.push("No high-risk page, URL, or form signals found");

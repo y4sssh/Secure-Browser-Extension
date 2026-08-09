@@ -245,6 +245,40 @@ h1 {
   gap: 8px;
 }
 
+.brandguard-summary {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.brandguard-summary-warning {
+  border-color: #f0b9b9;
+  background: #fff7f7;
+}
+
+.brandguard-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.brandguard-summary dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.brandguard-summary dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
 .section-title {
   display: flex;
   align-items: center;

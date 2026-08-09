@@ -5,6 +5,7 @@ export function SignalGrid({ evidence }) {
     ["HTTPS", signals.https ? "Yes" : "No"],
     ["URL risk", formatRisk(scores.urlRisk)],
     ["Form risk", formatRisk(scores.formRisk)],
+    ["Brand risk", formatRisk(scores.brandRisk)],
     ["Redirects", signals.redirectCount ?? evidence?.redirect?.count ?? 0],
     ["Password fields", signals.passwordFieldCount ?? 0],
     ["Cross-domain posts", signals.formPostsCrossDomain ? "Yes" : "No"],
@@ -12,6 +13,8 @@ export function SignalGrid({ evidence }) {
     ["Delayed login", signals.delayedPasswordField || signals.formActionChanged ? "Yes" : "No"],
     ["Iframe login", signals.iframeLogin || signals.suspectedCredentialIframeCount > 0 ? "Yes" : "No"],
     ["Claimed brand", signals.claimedBrand || "None"],
+    ["Brand mismatch", signals.brandDomainMismatch ? "Yes" : "No"],
+    ["Text snippets", signals.textSnippetCount ?? evidence?.textSignals?.snippetCount ?? 0],
   ];
 
   return (

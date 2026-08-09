@@ -205,12 +205,52 @@ test("normalization preserves capped FormGuard evidence and sanitizes URLs", () 
     reasons: ["Password form submits to a different domain"],
   });
 
-  assert.equal(evidence.schemaVersion, 2);
+  assert.equal(evidence.schemaVersion, 3);
   assert.equal(evidence.url, "https://example.test/path");
   assert.deepEqual(evidence.signals.claimedBrands, ["Microsoft", "Google", "PayPal", "Amazon"]);
   assert.equal(evidence.formGuard.timeline.length, 12);
   assert.equal(evidence.forms[0].passwordFieldCount, 1);
   assert.equal(evidence.forms[0].brandDomainMismatch, true);
+});
+
+test("normalization preserves capped BrandGuard and text evidence", () => {
+  const evidence = normalizeEvidence({
+    url: "https://login-example.test/account?token=secret#frag",
+    scores: { finalTrustScore: 8, brandRisk: 0.92 },
+    brandGuard: {
+      actualHostname: "login-example.test",
+      actualDomain: "login-example.test",
+      claimedBrand: "Microsoft",
+      claimedBrands: ["Microsoft", "Google", "PayPal", "Amazon", "Apple"],
+      expectedDomains: ["microsoft.com", "microsoftonline.com", "live.com", "office.com", "outlook.com"],
+      domainMismatch: true,
+      credentialContext: true,
+      textRisk: 0.42,
+      textSnippetCount: 14,
+      textSources: ["title", "heading", "button"],
+      cloudAnalysisEligible: true,
+      localModelVersion: "brandguard-text-rules-v1",
+    },
+    textSignals: {
+      snippets: Array.from({ length: 14 }, (_, index) => ({
+        source: "heading",
+        text: `Microsoft sign in ${index} ${"x".repeat(140)}`,
+      })),
+      redactions: { emails: 1, numbers: 2, tokens: 3, longStrings: 4 },
+      redactionCount: 10,
+      hasLoginText: true,
+      loginTextSignalCount: 3,
+      claimedBrands: ["Microsoft"],
+    },
+  });
+
+  assert.equal(evidence.url, "https://login-example.test/account");
+  assert.equal(evidence.brandGuard.claimedBrand, "Microsoft");
+  assert.deepEqual(evidence.brandGuard.claimedBrands, ["Microsoft", "Google", "PayPal", "Amazon"]);
+  assert.equal(evidence.brandGuard.domainMismatch, true);
+  assert.equal(evidence.textSignals.snippets.length, 12);
+  assert.equal(evidence.textSignals.snippets[0].text.length, 120);
+  assert.equal(evidence.signals.brandDomainMismatch, true);
 });
 
 test("content scanning code does not read typed field values", () => {

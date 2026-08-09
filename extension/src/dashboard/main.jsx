@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RefreshCw, ShieldCheck } from "lucide-react";
+import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
 import { FormGuardTimeline } from "../components/FormGuardTimeline";
 import { SignalGrid } from "../components/SignalGrid";
@@ -96,6 +97,7 @@ function DashboardApp() {
                   </span>
                 </div>
                 <SignalGrid evidence={item} />
+                <BrandGuardSummary evidence={item} />
                 <EvidenceReasons reasons={item.reasons} />
                 <FormGuardTimeline timeline={item.formGuard?.timeline ?? item.timeline} />
                 <div className="meta-row">
