@@ -11,6 +11,17 @@ import {
   getRecentEvidence,
   savePageEvidence,
 } from "../lib/storage/evidenceStorage";
+import {
+  getLatestDownloadScans,
+  getLatestCookieScans,
+  getLatestExtensionScans,
+  getLatestPasswordScans,
+  runCookieScan,
+  runExtensionScan,
+  requestCookiePermission,
+  requestManagementPermission,
+  handlePasswordAnalysis,
+} from "./scannerService";
 
 const RECENT_EVIDENCE_KEY = "secureBrowser.recentPageEvidence";
 const navigationByTab = new Map();
@@ -59,6 +70,47 @@ async function handleMessage(message, sender) {
 
     case MESSAGE_TYPES.GET_RECENT_EVIDENCE: {
       return { ok: true, evidence: await getRecentEvidence() };
+    }
+
+    case MESSAGE_TYPES.GET_LATEST_DOWNLOAD_SCANS: {
+      return { ok: true, scans: await getLatestDownloadScans() };
+    }
+
+    case MESSAGE_TYPES.GET_LATEST_COOKIE_SCANS: {
+      return { ok: true, scans: await getLatestCookieScans() };
+    }
+
+    case MESSAGE_TYPES.GET_LATEST_EXTENSION_SCANS: {
+      return { ok: true, scans: await getLatestExtensionScans() };
+    }
+
+    case MESSAGE_TYPES.GET_LATEST_PASSWORD_SCANS: {
+      return { ok: true, scans: await getLatestPasswordScans() };
+    }
+
+    case MESSAGE_TYPES.RUN_COOKIE_SCAN: {
+      const scan = await runCookieScan();
+      return { ok: true, scan };
+    }
+
+    case MESSAGE_TYPES.RUN_EXTENSION_SCAN: {
+      const scan = await runExtensionScan();
+      return { ok: true, scan };
+    }
+
+    case MESSAGE_TYPES.REQUEST_COOKIE_PERMISSION: {
+      const granted = await requestCookiePermission();
+      return { ok: true, granted };
+    }
+
+    case MESSAGE_TYPES.REQUEST_MANAGEMENT_PERMISSION: {
+      const granted = await requestManagementPermission();
+      return { ok: true, granted };
+    }
+
+    case MESSAGE_TYPES.PASSWORD_ANALYSIS_COLLECTED: {
+      const scan = await handlePasswordAnalysis(message.payload || {});
+      return { ok: true, scan };
     }
 
     default:

@@ -1,0 +1,182 @@
+const DANGEROUS_DOWNLOAD_EXTENSIONS = new Set([
+  "exe",
+  "msi",
+  "bat",
+  "cmd",
+  "scr",
+  "js",
+  "vbs",
+  "jar",
+  "ps1",
+  "iso",
+  "apk",
+]);
+
+const SUSPICIOUS_DOWNLOAD_TOKENS = [
+  "invoice",
+  "secure",
+  "login",
+  "account",
+  "payment",
+  "update",
+  "verify",
+  "confirm",
+  "receipt",
+  "statement",
+];
+
+export function estimatePasswordStrength(password) {
+  if (typeof password !== "string" || password.length === 0) {
+    return 0;
+  }
+
+  const categories = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].reduce(
+    (count, pattern) => count + (pattern.test(password) ? 1 : 0),
+    0,
+  );
+  const lengthScore = Math.min(password.length / 16, 1);
+  const varietyScore = (categories - 1) * 0.2;
+  const baseScore = Math.max(0, Math.min(1, lengthScore + varietyScore * 0.5));
+
+  if (password.length < 6) {
+    return Math.min(baseScore, 0.22);
+  }
+
+  return Math.max(0, Math.min(1, baseScore));
+}
+
+export function formatPasswordStrength(value) {
+  if (!Number.isFinite(value)) {
+    return "Unknown";
+  }
+  if (value >= 0.8) return "Strong";
+  if (value >= 0.5) return "Moderate";
+  if (value > 0) return "Weak";
+  return "None";
+}
+
+export function formatRiskScore(value) {
+  if (!Number.isFinite(value)) return "0%";
+  return `${Math.round(value * 100)}%`;
+}
+
+export function hasDoubleExtension(filename) {
+  if (typeof filename !== "string") return false;
+  const normalized = filename.toLowerCase();
+  const parts = normalized.split(".").filter(Boolean);
+  return parts.length >= 3 && DANGEROUS_DOWNLOAD_EXTENSIONS.has(parts[parts.length - 1]);
+}
+
+export function scoreDownloadItem(download) {
+  const warnings = [];
+  let risk = 0.03;
+  const filename = (download.filename || "").toLowerCase();
+  const danger = download.danger || "";
+  const url = download.url || "";
+
+  if (danger.includes("danger")) {
+    risk += 0.35;
+    warnings.push("Browser marked the download as potentially dangerous");
+  }
+
+  const extension = filename.split(".").pop() || "";
+  if (DANGEROUS_DOWNLOAD_EXTENSIONS.has(extension)) {
+    risk += 0.24;
+    warnings.push(`Downloaded file has a risky extension .${extension}`);
+  }
+
+  if (hasDoubleExtension(filename)) {
+    risk += 0.18;
+    warnings.push("Filename uses a double extension that can hide executable content");
+  }
+
+  if (SUSPICIOUS_DOWNLOAD_TOKENS.some((token) => url.toLowerCase().includes(token))) {
+    risk += 0.1;
+    warnings.push("Download source URL contains suspicious security-related terms");
+  }
+
+  if (filename.includes("\u202e")) {
+    risk += 0.12;
+    warnings.push("Filename contains a right-to-left override character");
+  }
+
+  return {
+    score: Math.max(0, Math.min(1, risk)),
+    reasons: warnings,
+    filename,
+    extension,
+  };
+}
+
+export async function sha256Hex(value) {
+  const data = new TextEncoder().encode(String(value));
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export function scoreExtensionItem(extension) {
+  let risk = 0.04;
+  const reasons = [];
+
+  const riskyApis = ["webRequest", "history", "cookies", "tabs", "management", "webRequestBlocking"];
+  const dangerousPermissionCount = (extension.permissions || []).filter((permission) => riskyApis.includes(permission)).length;
+
+  if (extension.installType === "development" || extension.installType === "sideload") {
+    risk += 0.18;
+    reasons.push("Extension is installed as sideloaded or development mode");
+  }
+
+  if ((extension.hostPermissions || []).includes("<all_urls>")) {
+    risk += 0.2;
+    reasons.push("Extension has broad host access to all URLs");
+  }
+
+  if (dangerousPermissionCount > 0) {
+    risk += Math.min(0.35, dangerousPermissionCount * 0.1);
+    reasons.push("Extension requests powerful browser permissions");
+  }
+
+  if (!extension.enabled) {
+    risk = Math.max(0, risk - 0.05);
+  }
+
+  return {
+    score: Math.max(0, Math.min(1, risk)),
+    reasons,
+  };
+}
+
+export function scoreCookieItem(cookie) {
+  let risk = 0;
+  const reasons = [];
+
+  if (!cookie.secure) {
+    risk += 0.18;
+    reasons.push("Cookie is not marked secure");
+  }
+  if (!cookie.httpOnly) {
+    risk += 0.14;
+    reasons.push("Cookie is readable from JavaScript without HttpOnly");
+  }
+  if (!cookie.sameSite || cookie.sameSite === "no_restriction") {
+    risk += 0.12;
+    reasons.push("Cookie does not enforce SameSite restrictions");
+  }
+  if (cookie.expiryDays >= 30) {
+    risk += 0.08;
+    reasons.push("Cookie expires far in the future");
+  }
+
+  return {
+    score: Math.max(0, Math.min(1, risk)),
+    reasons,
+  };
+}
+
+export function normalizeStringList(values, maxLength) {
+  return Array.isArray(values)
+    ? values.map((value) => String(value).slice(0, maxLength)).filter(Boolean)
+    : [];
+}

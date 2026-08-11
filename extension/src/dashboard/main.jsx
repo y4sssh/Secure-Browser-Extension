@@ -5,6 +5,7 @@ import { AlertBanner } from "../components/AlertBanner";
 import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
 import { FormGuardTimeline } from "../components/FormGuardTimeline";
+import { ScanSummaryPanel } from "../components/ScanSummaryPanel";
 import { SignalGrid } from "../components/SignalGrid";
 import { TrustMeter } from "../components/TrustMeter";
 import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
@@ -16,6 +17,10 @@ function DashboardApp() {
   const [evidence, setEvidence] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
+  const [downloadScans, setDownloadScans] = useState([]);
+  const [cookieScans, setCookieScans] = useState([]);
+  const [extensionScans, setExtensionScans] = useState([]);
+  const [passwordScans, setPasswordScans] = useState([]);
 
   const loadRecentEvidence = useCallback(async () => {
     setLoading(true);
@@ -25,9 +30,24 @@ function DashboardApp() {
     setLoading(false);
   }, []);
 
+  const loadScanSummaries = useCallback(async () => {
+    const [downloads, cookies, extensions, passwords] = await Promise.all([
+      sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_DOWNLOAD_SCANS }),
+      sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_COOKIE_SCANS }),
+      sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_EXTENSION_SCANS }),
+      sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_PASSWORD_SCANS }),
+    ]);
+
+    setDownloadScans(downloads?.ok ? downloads.scans ?? [] : []);
+    setCookieScans(cookies?.ok ? cookies.scans ?? [] : []);
+    setExtensionScans(extensions?.ok ? extensions.scans ?? [] : []);
+    setPasswordScans(passwords?.ok ? passwords.scans ?? [] : []);
+  }, []);
+
   useEffect(() => {
     loadRecentEvidence();
-  }, [loadRecentEvidence]);
+    loadScanSummaries();
+  }, [loadRecentEvidence, loadScanSummaries]);
 
   const latest = evidence[0] ?? null;
   const score = getPrimaryScore(latest);
@@ -80,6 +100,12 @@ function DashboardApp() {
       {status ? <p className="status-line">{status}</p> : null}
 
       {latest ? <AlertBanner score={score} verdict={latest.verdict} reasons={latest.reasons} /> : null}
+      <ScanSummaryPanel
+        downloadScans={downloadScans}
+        cookieScans={cookieScans}
+        extensionScans={extensionScans}
+        passwordScans={passwordScans}
+      />
 
       {!loading && evidence.length === 0 ? (
         <div className="empty-state">No page evidence stored</div>

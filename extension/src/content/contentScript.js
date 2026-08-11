@@ -1,4 +1,5 @@
 import { scanPage } from "./pageScanner";
+import { initPasswordAnalyzer } from "./passwordAnalyzer";
 
 (() => {
   const MESSAGE_TYPES = {
@@ -163,4 +164,6 @@ import { scanPage } from "./pageScanner";
   window.addEventListener("popstate", () => scheduleEvidence("location_change", 0));
   window.addEventListener("hashchange", () => scheduleEvidence("location_change", 0));
   window.setInterval(checkLocationChange, LOCATION_POLL_MS);
+
+  initPasswordAnalyzer();
 })();

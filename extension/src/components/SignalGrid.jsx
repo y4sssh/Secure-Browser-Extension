@@ -6,6 +6,8 @@ export function SignalGrid({ evidence }) {
     ["URL risk", formatRisk(scores.urlRisk)],
     ["Form risk", formatRisk(scores.formRisk)],
     ["Brand risk", formatRisk(scores.brandRisk)],
+    ["Download risk", formatRisk(scores.downloadRisk)],
+    ["Extension risk", formatRisk(scores.extensionExposureRisk)],
     ["Redirects", signals.redirectCount ?? evidence?.redirect?.count ?? 0],
     ["Password fields", signals.passwordFieldCount ?? 0],
     ["Cross-domain posts", signals.formPostsCrossDomain ? "Yes" : "No"],
