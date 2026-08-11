@@ -1,6 +1,6 @@
 # Secure-Browser-Extension
 
-Secure-Browser-Extension is a privacy-first Chrome browser extension prototype that detects suspicious page activity, phishing risk, and unsafe form behavior by combining URL, form, and brand evidence. The current implementation includes a working Manifest V3 extension, a React popup, a dashboard UI, page scanning and signal collection, and a FastAPI backend with Phase 6 analysis endpoints.
+Secure-Browser-Extension is a privacy-first Chrome browser extension prototype that detects suspicious page activity, phishing risk, 
 
 ## Current Status
 
