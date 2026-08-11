@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertBanner } from "../components/AlertBanner";
 import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
 import { FormGuardTimeline } from "../components/FormGuardTimeline";
@@ -77,6 +78,8 @@ function DashboardApp() {
 
       {loading ? <div className="empty-state">Loading evidence</div> : null}
       {status ? <p className="status-line">{status}</p> : null}
+
+      {latest ? <AlertBanner score={score} verdict={latest.verdict} reasons={latest.reasons} /> : null}
 
       {!loading && evidence.length === 0 ? (
         <div className="empty-state">No page evidence stored</div>

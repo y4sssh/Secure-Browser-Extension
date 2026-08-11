@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ExternalLink, LayoutDashboard, RefreshCw } from "lucide-react";
+import { AlertBanner } from "../components/AlertBanner";
 import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
 import { FormGuardTimeline } from "../components/FormGuardTimeline";
@@ -64,6 +65,7 @@ function PopupApp() {
         <div className="empty-state">Loading scan</div>
       ) : evidence ? (
         <>
+          <AlertBanner score={score} verdict={evidence.verdict} reasons={evidence.reasons} />
           <TrustMeter score={score} />
           <SignalGrid evidence={evidence} />
           <BrandGuardSummary evidence={evidence} />

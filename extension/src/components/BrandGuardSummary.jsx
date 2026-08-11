@@ -10,6 +10,7 @@ export function BrandGuardSummary({ evidence }) {
 
   const Icon = brandGuard.domainMismatch ? ShieldAlert : Building2;
   const expectedDomains = Array.isArray(brandGuard.expectedDomains) ? brandGuard.expectedDomains.slice(0, 3) : [];
+  const brandRisk = evidence?.scores?.brandRisk ?? brandGuard.textRisk ?? 0;
 
   return (
     <section className={`brandguard-summary ${brandGuard.domainMismatch ? "brandguard-summary-warning" : ""}`}>
@@ -32,7 +33,7 @@ export function BrandGuardSummary({ evidence }) {
         </div>
         <div>
           <dt>Brand risk</dt>
-          <dd>{formatRisk(evidence?.scores?.brandRisk)}</dd>
+          <dd>{formatRisk(brandRisk)}</dd>
         </div>
       </dl>
     </section>

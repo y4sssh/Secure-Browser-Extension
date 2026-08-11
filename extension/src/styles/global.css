@@ -177,6 +177,66 @@ h1 {
   background: #f8d4d4;
 }
 
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.alert-banner-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.alert-banner-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.alert-banner-description {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.alert-banner-trusted {
+  background: #e9f6ee;
+  border-color: #c6e8d0;
+}
+
+.alert-banner-trusted .alert-banner-icon {
+  color: var(--green);
+  background: #d5f0e4;
+}
+
+.alert-banner-caution {
+  background: #fff4d8;
+  border-color: #ecd39d;
+}
+
+.alert-banner-caution .alert-banner-icon {
+  color: var(--amber);
+  background: #ffe8ae;
+}
+
+.alert-banner-risky,
+.alert-banner-high-risk {
+  background: #fff0f0;
+  border-color: #f5c1c1;
+}
+
+.alert-banner-risky .alert-banner-icon,
+.alert-banner-high-risk .alert-banner-icon {
+  color: var(--red);
+  background: #f8d4d4;
+}
+
 .trust-score {
   font-size: 46px;
   line-height: 1;

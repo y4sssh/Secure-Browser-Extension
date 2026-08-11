@@ -70,6 +70,28 @@ def test_chat_explain_endpoint(app_client):
     assert "answer" in response.json()
 
 
+def test_reputation_virustotal_url_endpoint(app_client):
+    payload = {"url": "https://example.com/login"}
+    response = app_client.post("/api/v1/reputation/virustotal/url", json=payload)
+    assert response.status_code == 200
+    assert response.json()["source"] == "virustotal"
+
+
+def test_reputation_virustotal_file_hash_endpoint(app_client):
+    payload = {"fileHash": "d2d2d2d2"}
+    response = app_client.post("/api/v1/reputation/virustotal/file-hash", json=payload)
+    assert response.status_code == 200
+    assert response.json()["fileHash"] == "d2d2d2d2"
+
+
+def test_weekly_report_endpoint(app_client):
+    response = app_client.get("/api/v1/reports/weekly?clientId=test-client")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["clientId"] == "test-client"
+    assert "weekStart" in body and "weekEnd" in body
+
+
 def test_evidence_endpoint_rejects_raw_values(app_client, tmp_path):
     data_dir = Path(__file__).resolve().parents[1] / "backend" / "data"
     os.makedirs(data_dir, exist_ok=True)
