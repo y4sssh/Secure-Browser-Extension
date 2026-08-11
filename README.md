@@ -61,6 +61,13 @@ Secure-Browser-Extension is a privacy-first Chrome browser extension prototype t
   - extension exposure/risk scoring,
   - weekly reporting and evidence-based chatbot enhancements.
 
+## Documentation
+
+- `docs/THREAT_MODEL.md` — threat model, attackers, assets, and trust boundaries.
+- `docs/PRIVACY.md` — privacy rules, collected data, and backend guarantees.
+- `docs/API_SPEC.md` — current backend endpoint contract and payload examples.
+- `docs/EVALUATION_PLAN.md` — metrics, datasets, and evaluation methodology.
+
 ## Extension Architecture
 
 The `extension/` directory contains a complete Chrome Manifest V3 scaffold with:
