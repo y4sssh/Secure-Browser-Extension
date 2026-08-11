@@ -15,6 +15,13 @@ import {
   findPasswordFingerprint,
 } from "../lib/storage/scanStorage";
 
+export {
+  getLatestCookieScans,
+  getLatestExtensionScans,
+  getLatestPasswordScans,
+  getLatestDownloadScans,
+};
+
 function getDomainFromUrl(url) {
   try {
     return new URL(url).hostname;
