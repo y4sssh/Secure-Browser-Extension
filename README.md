@@ -16,9 +16,7 @@ Secure-Browser-Extension is a privacy-first Chrome browser extension prototype t
 - **Phase 1**: Extension scaffold and UI.
   - Created `manifest.json` for Manifest V3 and declared required/optional permissions.
   - Added `extension/src/background/serviceWorker.js` and `extension/src/background/messageRouter.js` for event-driven runtime handling.
-  - Built React popup (`extension/src/popup/main.jsx`) and dashboard (`extension/src/dashboard/main.jsx`) pages.
-  - Added the content script (`extension/src/content/contentScript.js`) to inject page scanning and listen for page lifecycle events.
-  - Added extension runtime helpers in `extension/src/lib/chrome/runtime.js` and message type constants in `extension/src/lib/chrome/messageTypes.js`.
+
 
 - **Phase 2**: Evidence engine, risk scoring, and storage.
   - Defined structured evidence normalization in `extension/src/lib/evidence/schema.js`.
