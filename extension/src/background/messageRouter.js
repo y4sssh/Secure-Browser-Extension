@@ -88,6 +88,15 @@ async function handleMessage(message, sender) {
       return { ok: true, scans: await getLatestPasswordScans() };
     }
 
+    case MESSAGE_TYPES.GET_WEEKLY_REPORT: {
+      const response = await fetch("http://127.0.0.1:8000/api/v1/reports/weekly");
+      if (!response.ok) {
+        return { ok: false, error: `Failed to load weekly report: ${response.statusText}` };
+      }
+      const report = await response.json();
+      return { ok: true, ...report };
+    }
+
     case MESSAGE_TYPES.RUN_COOKIE_SCAN: {
       const scan = await runCookieScan();
       return { ok: true, scan };

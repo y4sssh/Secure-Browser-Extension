@@ -8,6 +8,7 @@ export const MESSAGE_TYPES = {
   GET_LATEST_COOKIE_SCANS: "secureBrowser.getLatestCookieScans",
   GET_LATEST_EXTENSION_SCANS: "secureBrowser.getLatestExtensionScans",
   GET_LATEST_PASSWORD_SCANS: "secureBrowser.getLatestPasswordScans",
+  GET_WEEKLY_REPORT: "secureBrowser.getWeeklyReport",
 
   RUN_COOKIE_SCAN: "secureBrowser.runCookieScan",
   RUN_EXTENSION_SCAN: "secureBrowser.runExtensionScan",

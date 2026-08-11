@@ -257,6 +257,45 @@ h1 {
   margin: 0;
 }
 
+.weekly-report-panel,
+.scan-summary-panel {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  margin-bottom: 16px;
+}
+
+.weekly-report-panel h3,
+.scan-summary-panel h3 {
+  margin-top: 0;
+  font-size: 16px;
+}
+
+.weekly-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.scan-card {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.weekly-report-panel ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+.weekly-report-panel li {
+  margin: 4px 0;
+}
+
 .signal-item {
   min-height: 64px;
   padding: 10px;

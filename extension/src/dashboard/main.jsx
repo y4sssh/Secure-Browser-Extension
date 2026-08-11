@@ -6,6 +6,7 @@ import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
 import { FormGuardTimeline } from "../components/FormGuardTimeline";
 import { ScanSummaryPanel } from "../components/ScanSummaryPanel";
+import { WeeklyReportPanel } from "../components/WeeklyReportPanel";
 import { SignalGrid } from "../components/SignalGrid";
 import { TrustMeter } from "../components/TrustMeter";
 import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
@@ -21,6 +22,7 @@ function DashboardApp() {
   const [cookieScans, setCookieScans] = useState([]);
   const [extensionScans, setExtensionScans] = useState([]);
   const [passwordScans, setPasswordScans] = useState([]);
+  const [weeklyReport, setWeeklyReport] = useState(null);
 
   const loadRecentEvidence = useCallback(async () => {
     setLoading(true);
@@ -30,18 +32,26 @@ function DashboardApp() {
     setLoading(false);
   }, []);
 
+  const refreshAll = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([loadRecentEvidence(), loadScanSummaries()]);
+    setLoading(false);
+  }, [loadRecentEvidence, loadScanSummaries]);
+
   const loadScanSummaries = useCallback(async () => {
-    const [downloads, cookies, extensions, passwords] = await Promise.all([
+    const [downloads, cookies, extensions, passwords, report] = await Promise.all([
       sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_DOWNLOAD_SCANS }),
       sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_COOKIE_SCANS }),
       sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_EXTENSION_SCANS }),
       sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_PASSWORD_SCANS }),
+      sendRuntimeMessage({ type: MESSAGE_TYPES.GET_WEEKLY_REPORT }),
     ]);
 
     setDownloadScans(downloads?.ok ? downloads.scans ?? [] : []);
     setCookieScans(cookies?.ok ? cookies.scans ?? [] : []);
     setExtensionScans(extensions?.ok ? extensions.scans ?? [] : []);
     setPasswordScans(passwords?.ok ? passwords.scans ?? [] : []);
+    setWeeklyReport(report?.ok ? report : null);
   }, []);
 
   useEffect(() => {
@@ -70,7 +80,7 @@ function DashboardApp() {
             <p>Recent page evidence</p>
           </div>
         </div>
-        <button className="button-primary" type="button" onClick={loadRecentEvidence}>
+        <button className="button-primary" type="button" onClick={refreshAll}>
           <RefreshCw size={17} aria-hidden="true" />
           Refresh
         </button>
@@ -106,6 +116,7 @@ function DashboardApp() {
         extensionScans={extensionScans}
         passwordScans={passwordScans}
       />
+      <WeeklyReportPanel report={weeklyReport} />
 
       {!loading && evidence.length === 0 ? (
         <div className="empty-state">No page evidence stored</div>
