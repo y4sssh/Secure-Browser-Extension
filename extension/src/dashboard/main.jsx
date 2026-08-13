@@ -32,12 +32,6 @@ function DashboardApp() {
     setLoading(false);
   }, []);
 
-  const refreshAll = useCallback(async () => {
-    setLoading(true);
-    await Promise.all([loadRecentEvidence(), loadScanSummaries()]);
-    setLoading(false);
-  }, [loadRecentEvidence, loadScanSummaries]);
-
   const loadScanSummaries = useCallback(async () => {
     const [downloads, cookies, extensions, passwords, report] = await Promise.all([
       sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_DOWNLOAD_SCANS }),
@@ -53,6 +47,12 @@ function DashboardApp() {
     setPasswordScans(passwords?.ok ? passwords.scans ?? [] : []);
     setWeeklyReport(report?.ok ? report : null);
   }, []);
+
+  const refreshAll = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([loadRecentEvidence(), loadScanSummaries()]);
+    setLoading(false);
+  }, [loadRecentEvidence, loadScanSummaries]);
 
   useEffect(() => {
     loadRecentEvidence();
