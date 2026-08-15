@@ -154,19 +154,41 @@ export async function runExtensionScan() {
         return;
       }
 
+      // Load previous extension scan to detect version changes
+      const previousScans = await getLatestExtensionScans();
+      const prevLatest = previousScans?.[0] ?? null;
+      const prevVersionMap = {};
+      if (prevLatest && Array.isArray(prevLatest.extensions)) {
+        for (const e of prevLatest.extensions) {
+          if (e && e.id) prevVersionMap[e.id] = e.version || "";
+        }
+      }
+
       const filtered = extensions.filter((item) => item.id !== chrome.runtime.id);
       const scans = filtered.map((extension) => {
         const result = scoreExtensionItem(extension);
-        return {
+        const prevVersion = prevVersionMap[extension.id] ?? null;
+        const versionChanged = prevVersion && prevVersion !== (extension.version || "");
+
+        const extEntry = {
           id: extension.id,
           name: extension.name,
           enabled: Boolean(extension.enabled),
           installType: extension.installType || "unknown",
+          version: extension.version || "",
+          previousVersion: prevVersion,
+          versionChanged: Boolean(versionChanged),
           permissions: extension.permissions ?? [],
           hostPermissions: extension.hostPermissions ?? [],
           risk: result.score,
           reasons: result.reasons,
         };
+
+        if (versionChanged) {
+          extEntry.reasons = Array.from(new Set([...(extEntry.reasons || []), `Extension version changed from ${prevVersion} to ${extEntry.version}`]));
+        }
+
+        return extEntry;
       });
 
       const combinedRisk = scans.reduce((maxRisk, item) => Math.max(maxRisk, item.risk), 0);

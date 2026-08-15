@@ -8,6 +8,7 @@ import { FormGuardTimeline } from "../components/FormGuardTimeline";
 import { ScanSummaryPanel } from "../components/ScanSummaryPanel";
 import CookieHealthPanel from "../components/CookieHealthPanel";
 import ExtensionHealthPanel from "../components/ExtensionHealthPanel";
+import ExposureMap from "../components/ExposureMap";
 import { WeeklyReportPanel } from "../components/WeeklyReportPanel";
 import { SignalGrid } from "../components/SignalGrid";
 import { TrustMeter } from "../components/TrustMeter";
@@ -120,6 +121,7 @@ function DashboardApp() {
       />
       <CookieHealthPanel cookieScans={cookieScans} />
       <ExtensionHealthPanel extensionScans={extensionScans} />
+      <ExposureMap extensionScans={extensionScans} />
       <WeeklyReportPanel report={weeklyReport} />
 
       {!loading && evidence.length === 0 ? (
