@@ -6,6 +6,7 @@ import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
 import { FormGuardTimeline } from "../components/FormGuardTimeline";
 import { ScanSummaryPanel } from "../components/ScanSummaryPanel";
+import CookieHealthPanel from "../components/CookieHealthPanel";
 import { WeeklyReportPanel } from "../components/WeeklyReportPanel";
 import { SignalGrid } from "../components/SignalGrid";
 import { TrustMeter } from "../components/TrustMeter";
@@ -116,6 +117,7 @@ function DashboardApp() {
         extensionScans={extensionScans}
         passwordScans={passwordScans}
       />
+      <CookieHealthPanel cookieScans={cookieScans} />
       <WeeklyReportPanel report={weeklyReport} />
 
       {!loading && evidence.length === 0 ? (
