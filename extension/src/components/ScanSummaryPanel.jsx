@@ -1,4 +1,11 @@
+import { useState } from "react";
+import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
+import { sendRuntimeMessage } from "../lib/chrome/runtime";
+
 export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, passwordScans }) {
+  const [cookieLoading, setCookieLoading] = useState(false);
+  const [cookiePermissionLoading, setCookiePermissionLoading] = useState(false);
+
   const latestDownload = downloadScans?.[0] ?? null;
   const latestCookie = cookieScans?.[0] ?? null;
   const latestExtension = extensionScans?.[0] ?? null;
@@ -17,6 +24,37 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
           <h4>Cookie scan</h4>
           <p>{latestCookie ? `Risk ${Math.round(latestCookie.risk * 100)}%` : "No cookie scan"}</p>
           <p>{latestCookie?.domain ?? "—"}</p>
+          <div style={{ marginTop: 8 }}>
+            <button
+              className="button-secondary"
+              type="button"
+              onClick={async () => {
+                setCookieLoading(true);
+                const resp = await sendRuntimeMessage({ type: MESSAGE_TYPES.RUN_COOKIE_SCAN });
+                setCookieLoading(false);
+                if (!resp?.ok) {
+                  // ignore — the dashboard refresh will show status
+                }
+              }}
+            >
+              {cookieLoading ? "Scanning…" : "Run cookie scan"}
+            </button>
+            <button
+              className="button-link"
+              type="button"
+              onClick={async () => {
+                setCookiePermissionLoading(true);
+                const resp = await sendRuntimeMessage({ type: MESSAGE_TYPES.REQUEST_COOKIE_PERMISSION });
+                setCookiePermissionLoading(false);
+                if (!resp?.ok) {
+                  // ignore
+                }
+              }}
+              style={{ marginLeft: 8 }}
+            >
+              {cookiePermissionLoading ? "Requesting…" : "Enable cookie permission"}
+            </button>
+          </div>
         </article>
         <article className="scan-card">
           <h4>Extension scan</h4>
