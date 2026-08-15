@@ -161,16 +161,32 @@ export function scoreExtensionItem(extension) {
   // Host permission scoring: broad host access is high risk
   const hostPermissions = normalizeStringList(extension.hostPermissions || [], 256);
   let hostRisk = 0;
-  if (hostPermissions.includes("<all_urls>") || hostPermissions.some((h) => h === "*://*/*")) {
-    hostRisk += 0.28;
-    reasons.push("Extension has broad host access to all URLs");
-  } else {
-    // Wildcard patterns or many host permissions increase risk gradually
-    const wildcardCount = hostPermissions.filter((h) => h.includes("*") || h.includes("<all_urls>")).length;
-    hostRisk += Math.min(0.25, wildcardCount * 0.06 + Math.max(0, hostPermissions.length - 3) * 0.03);
-    if (hostPermissions.length > 3) {
-      reasons.push("Extension requests many host permissions");
-    }
+  const flaggedHosts = [];
+
+  const hasAllUrls = hostPermissions.includes("<all_urls>") || hostPermissions.includes("*://*/*");
+  if (hasAllUrls) {
+    hostRisk += 0.32;
+    flaggedHosts.push("<all_urls>");
+  }
+
+  // Wildcard host patterns like *://*.example.com/* or patterns containing '*' are higher risk
+  const wildcardPatterns = hostPermissions.filter((h) => h.includes("*") && !h.includes("<all_urls>"));
+  if (wildcardPatterns.length > 0) {
+    // each wildcard pattern contributes a small risk, capped
+    hostRisk += Math.min(0.28, wildcardPatterns.length * 0.07);
+    flaggedHosts.push(...wildcardPatterns.slice(0, 3));
+  }
+
+  // Many explicit host permissions is also a risk signal
+  if (hostPermissions.length > 8) {
+    hostRisk += 0.14;
+    reasons.push("Extension requests many host permissions");
+  } else if (hostPermissions.length > 3) {
+    hostRisk += 0.06;
+  }
+
+  if (flaggedHosts.length > 0) {
+    reasons.push(`Broad host access patterns: ${flaggedHosts.slice(0, 3).join(", ")}`);
   }
 
   risk += hostRisk;
