@@ -1,0 +1,183 @@
+{
+  "generatedAt": "2026-08-14T08:54:08.308Z",
+  "browser": "Chrome/150.0.7871.124",
+  "extension": {
+    "id": "hfpphcoalbkbpkocohfkajgncoanchha",
+    "name": "Secure Browser Extension",
+    "version": "0.1.0",
+    "manifestVersion": 3,
+    "loadedPath": "/home/error/Documents/Secure-Browser-Extension/extension/dist",
+    "serviceWorkerUrl": "chrome-extension://hfpphcoalbkbpkocohfkajgncoanchha/assets/serviceWorker.js"
+  },
+  "fixtureUrl": "http://127.0.0.1:8080/phishing-cross-domain/",
+  "popup": {
+    "title": "Risky page detected",
+    "score": "0",
+    "label": "high_risk",
+    "origin": "http://127.0.0.1:8080",
+    "bodyText": "Secure Browser\n\nhttp://127.0.0.1:8080\n\nRisky page detected\nPage claims Microsoft identity but the credential form posts to a non-brand domain\n0\nHigh risk\nHTTPS\nNo\nURL risk\n38%\nForm risk\n100%\nBrand risk\n90%\nDownload risk\n0%\nExtension risk\n0%\nRedirects\n0\nPassword fields\n2\nCross-domain posts\nYes\nHTTP submit\nNo\nDelayed login\nYes\nIframe login\nNo\nClaimed brand\nMicrosoft\nBrand mismatch\nYes\nText snippets\n10\nBRANDGUARD\nClaimed brand\nMicrosoft\nActual domain\n0.1\nExpected domain\nmicrosoft.com, microsoftonline.com, live.com\nBrand risk\n90%\nPage claims Microsoft identity but the credential form posts to a non-brand domain\nPassword form submits to a different domain\nPage claims Microsoft identity but actual domain is 0.1\nHTTP page asks for a password\nLogin form appeared after page load\nForm submit destination changed after page load\nHostname is an IP address instead of a named domain\nPage is not using HTTPS\nFORMGUARD\nCross-domain password form\n2s\nSubmit destination changed\n2s\nDelayed login form\n2s\nDelayed password field\n2s\nForm added\n2s\nAug 14, 02:24 PM\nformguard_mutation\nDashboard\nPage"
+  },
+  "latestEvidence": {
+    "url": "http://127.0.0.1:8080/phishing-cross-domain/",
+    "score": 0,
+    "verdict": "high_risk",
+    "severity": "critical",
+    "reasons": [
+      "Page claims Microsoft identity but the credential form posts to a non-brand domain",
+      "Password form submits to a different domain",
+      "Page claims Microsoft identity but actual domain is 0.1",
+      "HTTP page asks for a password",
+      "Login form appeared after page load",
+      "Form submit destination changed after page load",
+      "Hostname is an IP address instead of a named domain",
+      "Page is not using HTTPS"
+    ],
+    "signals": {
+      "antiAnalysis": true,
+      "autocompleteDisabled": true,
+      "blockedIframeCount": 0,
+      "brandActualDomain": "0.1",
+      "brandDomainMismatch": true,
+      "brandExpectedDomains": [
+        "microsoft.com",
+        "microsoftonline.com",
+        "live.com",
+        "office.com"
+      ],
+      "brandFormDomainMismatch": true,
+      "claimedBrand": "Microsoft",
+      "claimedBrands": [
+        "Microsoft"
+      ],
+      "delayedPasswordField": true,
+      "domainLooksRandom": false,
+      "excessiveSubdomains": false,
+      "formActionChanged": true,
+      "formCount": 2,
+      "formPostsCrossDomain": true,
+      "formPostsCrossOrigin": true,
+      "formPostsToHttp": false,
+      "hasPasswordField": true,
+      "hashPresent": false,
+      "hiddenCredentialField": false,
+      "hiddenPasswordField": false,
+      "https": false,
+      "iframeDepth": 0,
+      "iframeLogin": false,
+      "insecurePasswordSubmit": false,
+      "loginFormCount": 2,
+      "loginOverlay": false,
+      "passwordFieldCount": 2,
+      "pathLength": 23,
+      "queryPresent": false,
+      "redirectCount": 0,
+      "suspectedCredentialIframeCount": 0,
+      "textRisk": 0.22999999999999998,
+      "textSnippetCount": 10,
+      "titleLength": 30
+    },
+    "formGuardTimeline": [
+      {
+        "crossDomainPasswordFormCount": 1,
+        "elapsedMs": 5,
+        "event": "initial_scan",
+        "formCount": 1,
+        "insecurePasswordSubmitCount": 0,
+        "loginFormCount": 1,
+        "passwordFieldCount": 1,
+        "trigger": "document_idle"
+      },
+      {
+        "crossDomainPasswordFormCount": 1,
+        "elapsedMs": 5,
+        "event": "cross_domain_password_form",
+        "formCount": 1,
+        "insecurePasswordSubmitCount": 0,
+        "loginFormCount": 1,
+        "passwordFieldCount": 1,
+        "trigger": "document_idle"
+      },
+      {
+        "crossDomainPasswordFormCount": 2,
+        "elapsedMs": 1950,
+        "event": "form_added",
+        "formCount": 2,
+        "insecurePasswordSubmitCount": 0,
+        "loginFormCount": 2,
+        "passwordFieldCount": 2,
+        "trigger": "formguard_mutation"
+      },
+      {
+        "crossDomainPasswordFormCount": 2,
+        "elapsedMs": 1950,
+        "event": "delayed_password_field",
+        "formCount": 2,
+        "insecurePasswordSubmitCount": 0,
+        "loginFormCount": 2,
+        "passwordFieldCount": 2,
+        "trigger": "formguard_mutation"
+      },
+      {
+        "crossDomainPasswordFormCount": 2,
+        "elapsedMs": 1950,
+        "event": "delayed_login_form",
+        "formCount": 2,
+        "insecurePasswordSubmitCount": 0,
+        "loginFormCount": 2,
+        "passwordFieldCount": 2,
+        "trigger": "formguard_mutation"
+      },
+      {
+        "crossDomainPasswordFormCount": 2,
+        "elapsedMs": 1950,
+        "event": "form_action_changed",
+        "formCount": 2,
+        "insecurePasswordSubmitCount": 0,
+        "loginFormCount": 2,
+        "passwordFieldCount": 2,
+        "trigger": "formguard_mutation"
+      },
+      {
+        "crossDomainPasswordFormCount": 2,
+        "elapsedMs": 1950,
+        "event": "cross_domain_password_form",
+        "formCount": 2,
+        "insecurePasswordSubmitCount": 0,
+        "loginFormCount": 2,
+        "passwordFieldCount": 2,
+        "trigger": "formguard_mutation"
+      }
+    ]
+  },
+  "privacyCheck": {
+    "typedSentinelLength": 45,
+    "rawSentinelFoundInStorage": false,
+    "passwordScanKeys": [
+      "domain",
+      "hash",
+      "pageUrl",
+      "reuseCount",
+      "reuseDetected",
+      "strength",
+      "timestamp"
+    ],
+    "passwordHashLength": 64,
+    "storageKeys": [
+      "secureBrowser.passwordScans",
+      "secureBrowser.recentPageEvidence"
+    ]
+  },
+  "checks": {
+    "extensionLoaded": true,
+    "fixtureInteractionWorked": true,
+    "popupDisplaysCurrentPageScore": true,
+    "fakePageTriggersHighRisk": true,
+    "brandGuardMismatchDetected": true,
+    "formGuardCrossDomainDetected": true,
+    "noRawPasswordStored": true
+  },
+  "screenshots": {
+    "page": "/home/error/Documents/Secure-Browser-Extension/demo-artifacts/2026-08-14T08-50-49-910Z/live-fake-phishing-page.png",
+    "popup": "/home/error/Documents/Secure-Browser-Extension/demo-artifacts/2026-08-14T08-50-49-910Z/live-popup-score.png"
+  }
+}
