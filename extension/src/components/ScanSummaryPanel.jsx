@@ -9,6 +9,8 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
   const latestDownload = downloadScans?.[0] ?? null;
   const latestCookie = cookieScans?.[0] ?? null;
   const latestExtension = extensionScans?.[0] ?? null;
+  const [extLoading, setExtLoading] = useState(false);
+  const [extPermissionLoading, setExtPermissionLoading] = useState(false);
   const latestPassword = passwordScans?.[0] ?? null;
 
   return (
@@ -60,6 +62,37 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
           <h4>Extension scan</h4>
           <p>{latestExtension ? `Risk ${Math.round(latestExtension.risk * 100)}%` : "No extension scan"}</p>
           <p>{latestExtension ? `${latestExtension.extensionCount} extensions` : "—"}</p>
+          <div style={{ marginTop: 8 }}>
+            <button
+              className="button-secondary"
+              type="button"
+              onClick={async () => {
+                setExtLoading(true);
+                const resp = await sendRuntimeMessage({ type: MESSAGE_TYPES.RUN_EXTENSION_SCAN });
+                setExtLoading(false);
+                if (!resp?.ok) {
+                  // ignore
+                }
+              }}
+            >
+              {extLoading ? "Scanning…" : "Run extension scan"}
+            </button>
+            <button
+              className="button-link"
+              type="button"
+              onClick={async () => {
+                setExtPermissionLoading(true);
+                const resp = await sendRuntimeMessage({ type: MESSAGE_TYPES.REQUEST_MANAGEMENT_PERMISSION });
+                setExtPermissionLoading(false);
+                if (!resp?.ok) {
+                  // ignore
+                }
+              }}
+              style={{ marginLeft: 8 }}
+            >
+              {extPermissionLoading ? "Requesting…" : "Enable management permission"}
+            </button>
+          </div>
         </article>
         <article className="scan-card">
           <h4>Password scan</h4>
