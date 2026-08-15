@@ -120,31 +120,69 @@ export function scoreExtensionItem(extension) {
   let risk = 0.04;
   const reasons = [];
 
-  const riskyApis = ["webRequest", "history", "cookies", "tabs", "management", "webRequestBlocking"];
-  const dangerousPermissionCount = (extension.permissions || []).filter((permission) => riskyApis.includes(permission)).length;
-
+  // Penalize development/sideloaded installs (higher risk)
   if (extension.installType === "development" || extension.installType === "sideload") {
     risk += 0.18;
     reasons.push("Extension is installed as sideloaded or development mode");
   }
 
-  if ((extension.hostPermissions || []).includes("<all_urls>")) {
-    risk += 0.2;
+  // Permission weight table — higher weight = more sensitive
+  const PERMISSION_WEIGHTS = {
+    webRequestBlocking: 0.25,
+    webRequest: 0.22,
+    cookies: 0.20,
+    nativeMessaging: 0.18,
+    history: 0.15,
+    management: 0.14,
+    scripting: 0.12,
+    downloads: 0.10,
+    clipboardRead: 0.09,
+    clipboardWrite: 0.06,
+    tabs: 0.06,
+    activeTab: 0.02,
+  };
+
+  const permissions = normalizeStringList(extension.permissions || [], 128);
+  let permRisk = 0;
+  const matchedPerms = [];
+  for (const p of permissions) {
+    const weight = PERMISSION_WEIGHTS[p] ?? 0;
+    if (weight > 0) {
+      permRisk += weight;
+      matchedPerms.push(p);
+    }
+  }
+
+  if (matchedPerms.length > 0) {
+    risk += Math.min(0.6, permRisk);
+    reasons.push(`Extension requests sensitive permissions: ${matchedPerms.join(", ")}`);
+  }
+
+  // Host permission scoring: broad host access is high risk
+  const hostPermissions = normalizeStringList(extension.hostPermissions || [], 256);
+  let hostRisk = 0;
+  if (hostPermissions.includes("<all_urls>") || hostPermissions.some((h) => h === "*://*/*")) {
+    hostRisk += 0.28;
     reasons.push("Extension has broad host access to all URLs");
+  } else {
+    // Wildcard patterns or many host permissions increase risk gradually
+    const wildcardCount = hostPermissions.filter((h) => h.includes("*") || h.includes("<all_urls>")).length;
+    hostRisk += Math.min(0.25, wildcardCount * 0.06 + Math.max(0, hostPermissions.length - 3) * 0.03);
+    if (hostPermissions.length > 3) {
+      reasons.push("Extension requests many host permissions");
+    }
   }
 
-  if (dangerousPermissionCount > 0) {
-    risk += Math.min(0.35, dangerousPermissionCount * 0.1);
-    reasons.push("Extension requests powerful browser permissions");
-  }
+  risk += hostRisk;
 
+  // If extension is disabled, reduce risk slightly
   if (!extension.enabled) {
     risk = Math.max(0, risk - 0.05);
   }
 
   return {
     score: Math.max(0, Math.min(1, risk)),
-    reasons,
+    reasons: Array.from(new Set(reasons)),
   };
 }
 
