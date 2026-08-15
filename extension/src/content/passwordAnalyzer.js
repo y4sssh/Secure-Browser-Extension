@@ -1,3 +1,5 @@
+import { estimatePasswordStrength, sha256Hex } from "../lib/securityUtils";
+
 const MESSAGE_TYPES = {
   PASSWORD_ANALYSIS_COLLECTED: "secureBrowser.passwordAnalysisCollected",
 };
@@ -16,14 +18,44 @@ function scheduleAnalysis(input) {
   inputTimers.set(input, timer);
 }
 
+async function sha1Hex(value) {
+  const data = new TextEncoder().encode(String(value));
+  const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("").toUpperCase();
+}
+
+async function checkHibpKAnonymity(sha1HexFull) {
+  // sha1HexFull should be uppercase hex string
+  try {
+    const prefix = sha1HexFull.slice(0, 5);
+    const suffix = sha1HexFull.slice(5);
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    if (!res.ok) return 0;
+    const text = await res.text();
+    const lines = text.split("\n");
+    for (const line of lines) {
+      const [suff, count] = line.trim().split(":");
+      if (!suff) continue;
+      if (suff.toUpperCase() === suffix) {
+        return Number(count) || 0;
+      }
+    }
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
 async function analyzePasswordInput(input) {
   const value = input.value || "";
-  if (value.length < 4) {
-    return;
-  }
+  if (value.length < 4) return;
 
   const strength = estimatePasswordStrength(value);
-  const hash = await sha256Hex(`secure-browser-password|${value}`);
+  const sha256 = await sha256Hex(`secure-browser-password|${value}`);
+  const sha1 = await sha1Hex(value);
+
   const pageUrl = window.location.href;
   const domain = (() => {
     try {
@@ -33,6 +65,18 @@ async function analyzePasswordInput(input) {
     }
   })();
 
+  // Optional HIBP check only if user enabled it in storage
+  let hibpPwnedCount = 0;
+  try {
+    const items = await new Promise((resolve) => chrome.storage.local.get({ secureBrowser: {} }, resolve));
+    const hibpEnabled = items?.secureBrowser?.hibpEnabled ?? false;
+    if (hibpEnabled) {
+      hibpPwnedCount = await checkHibpKAnonymity(sha1);
+    }
+  } catch {
+    hibpPwnedCount = 0;
+  }
+
   chrome.runtime.sendMessage(
     {
       type: MESSAGE_TYPES.PASSWORD_ANALYSIS_COLLECTED,
@@ -40,7 +84,8 @@ async function analyzePasswordInput(input) {
         pageUrl,
         domain,
         strength,
-        hash,
+        hash: sha256,
+        hibpPwnedCount,
       },
     },
     () => {
@@ -79,28 +124,6 @@ function observePasswordFields(ownerDocument) {
 function isPasswordNode(node) {
   if (node.nodeType !== Node.ELEMENT_NODE) return false;
   return node.matches?.(PASSWORD_INPUT_SELECTOR) || Boolean(node.querySelector?.(PASSWORD_INPUT_SELECTOR));
-}
-
-function estimatePasswordStrength(password) {
-  if (typeof password !== "string" || password.length === 0) {
-    return 0;
-  }
-
-  const categories = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].reduce(
-    (count, pattern) => count + (pattern.test(password) ? 1 : 0),
-    0,
-  );
-  const lengthScore = Math.min(password.length / 16, 1);
-  const varietyScore = Math.max(0, categories - 1) * 0.16;
-  return Math.max(0, Math.min(1, lengthScore + varietyScore));
-}
-
-async function sha256Hex(value) {
-  const data = new TextEncoder().encode(String(value));
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 export function initPasswordAnalyzer() {

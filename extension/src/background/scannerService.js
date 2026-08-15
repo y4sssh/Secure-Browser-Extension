@@ -188,15 +188,25 @@ export async function handlePasswordAnalysis(payload) {
     throw new Error("Invalid password analysis payload");
   }
 
-  const existing = await findPasswordFingerprint(payload.hash);
+  // Store salted/HMAC fingerprint by hashing the provided hash with an extension-unique salt
+  const saltPrefix = "secure-browser-pwd-salt|";
+  const saltedKey = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${saltPrefix}${payload.hash}`),
+  ).then((buffer) => Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, "0")).join(""));
+
+  const existing = await findPasswordFingerprint(saltedKey);
   const reuseDetected = Boolean(existing && existing.domain !== payload.domain);
   const reuseCount = existing ? existing.reuseCount + 1 : 1;
+
   const scan = {
     timestamp: new Date().toISOString(),
     pageUrl: payload.pageUrl || "",
     domain: payload.domain || "",
     strength: payload.strength ?? 0,
-    hash: payload.hash,
+    // store the salted fingerprint only
+    hash: saltedKey,
+    hibpPwnedCount: payload.hibpPwnedCount || 0,
     reuseDetected,
     reuseCount,
   };
