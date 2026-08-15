@@ -26,8 +26,15 @@ export function ExtensionHealthPanel({ extensionScans = [] }) {
               <ul>
                 {(scan.extensions || []).map((ext) => (
                   <li key={ext.id} style={{ marginBottom: 8 }}>
-                    <strong>{ext.name}</strong>
-                    {` — id: ${ext.id.slice(0, 12)}, enabled: ${ext.enabled ? "yes" : "no"}, install: ${ext.installType || "-"}`}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <strong>{ext.name}</strong>
+                      <span style={{ color: "#666", fontSize: 12 }}>{`id: ${ext.id.slice(0, 12)}`}</span>
+                      {ext.installType === "development" || ext.installType === "sideload" ? (
+                        <span style={{ marginLeft: 8, padding: "2px 6px", background: "#ffe8e6", color: "#a33", borderRadius: 6, fontSize: 12 }}>Sideloaded / Dev</span>
+                      ) : null}
+                      {!ext.enabled ? <span style={{ marginLeft: 8, fontSize: 12, color: "#666" }}>disabled</span> : null}
+                    </div>
+                    <div style={{ marginTop: 6 }}>{`install: ${ext.installType || "-"}, enabled: ${ext.enabled ? "yes" : "no"}`}</div>
                     <div style={{ marginTop: 6 }}>
                       <em>Permissions:</em> {(ext.permissions || []).join(", ") || "none"}
                     </div>
