@@ -2,6 +2,11 @@ import { useState } from "react";
 import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
 import { sendRuntimeMessage } from "../lib/chrome/runtime";
 
+const PERMISSION_EXPLANATIONS = {
+  cookies: "Inspect cookie security flags. Cookie values are never stored or sent.",
+  management: "List installed extensions and their permissions. No extension data is sent externally.",
+};
+
 export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, passwordScans }) {
   const [cookieLoading, setCookieLoading] = useState(false);
   const [cookiePermissionLoading, setCookiePermissionLoading] = useState(false);
@@ -16,6 +21,9 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
   return (
     <section className="scan-summary-panel">
       <h3>Recent security scans</h3>
+      <p style={{ marginTop: 4, marginBottom: 12, color: "#657282", fontSize: 12 }}>
+        Scans run locally in your browser. Optional permissions are requested only when you start a scan.
+      </p>
       <div className="scan-summary-grid">
         <article className="scan-card">
           <h4>Download scan</h4>
@@ -56,6 +64,9 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
             >
               {cookiePermissionLoading ? "Requesting…" : "Enable cookie permission"}
             </button>
+            <p style={{ marginTop: 6, color: "#657282", fontSize: 11 }}>
+              {PERMISSION_EXPLANATIONS.cookies}
+            </p>
           </div>
         </article>
         <article className="scan-card">
@@ -92,6 +103,9 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
             >
               {extPermissionLoading ? "Requesting…" : "Enable management permission"}
             </button>
+            <p style={{ marginTop: 6, color: "#657282", fontSize: 11 }}>
+              {PERMISSION_EXPLANATIONS.management}
+            </p>
           </div>
         </article>
         <article className="scan-card">

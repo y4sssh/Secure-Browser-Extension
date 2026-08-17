@@ -105,6 +105,28 @@ def test_chat_explain_handles_empty_evidence(app_client):
     assert len(body["answer"]) > 0
 
 
+def test_chat_explain_rejects_raw_password_in_evidence(app_client):
+    payload = {
+        "question": "Why is this risky?",
+        "evidence": {"password": "secret123", "verdict": "high_risk"},
+    }
+    response = app_client.post("/api/v1/chat/explain", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert "secret123" not in body.get("answer", "")
+
+
+def test_chat_explain_rejects_cookie_value_in_evidence(app_client):
+    payload = {
+        "question": "Why is this risky?",
+        "evidence": {"cookie": "session=abc123", "verdict": "high_risk"},
+    }
+    response = app_client.post("/api/v1/chat/explain", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert "session=abc123" not in body.get("answer", "")
+
+
 def test_reputation_virustotal_url_endpoint(app_client):
     payload = {"url": "https://example.com/login"}
     response = app_client.post("/api/v1/reputation/virustotal/url", json=payload)

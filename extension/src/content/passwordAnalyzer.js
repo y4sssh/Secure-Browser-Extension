@@ -69,7 +69,8 @@ async function analyzePasswordInput(input) {
   let hibpPwnedCount = 0;
   try {
     const items = await new Promise((resolve) => chrome.storage.local.get({ secureBrowser: {} }, resolve));
-    const hibpEnabled = items?.secureBrowser?.hibpEnabled ?? false;
+    const secureBrowser = items?.secureBrowser || {};
+    const hibpEnabled = secureBrowser.hibpEnabled ?? secureBrowser.consents?.hibp ?? false;
     if (hibpEnabled) {
       hibpPwnedCount = await checkHibpKAnonymity(sha1);
     }

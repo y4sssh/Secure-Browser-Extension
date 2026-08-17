@@ -13,6 +13,8 @@ import ExposureMap from "../components/ExposureMap";
 import { WeeklyReportPanel } from "../components/WeeklyReportPanel";
 import { SignalGrid } from "../components/SignalGrid";
 import { TrustMeter } from "../components/TrustMeter";
+import PrivacyNotice from "../components/PrivacyNotice";
+import ConsentPanel from "../components/ConsentPanel";
 import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
 import { sendRuntimeMessage } from "../lib/chrome/runtime";
 import { formatTimestamp, getPrimaryScore, getTrustLabel } from "../lib/evidence/evidenceSummary";
@@ -130,6 +132,8 @@ function DashboardApp() {
       <ExposureMap extensionScans={extensionScans} />
       <WeeklyReportPanel report={weeklyReport} />
       <ChatBotPanel latestEvidence={latest} onAsk={handleChatAsk} />
+      <PrivacyNotice />
+      <ConsentPanel />
 
       {!loading && evidence.length === 0 ? (
         <div className="empty-state">No page evidence stored</div>
