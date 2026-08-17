@@ -13,7 +13,11 @@ test("ChatBotPanel component file contains required UI elements", async () => {
   assert.ok(content.includes("Ask the security assistant"), "ChatBotPanel should have a security assistant heading");
   assert.ok(content.includes("Ask"), "ChatBotPanel should have an Ask button");
   assert.ok(content.includes("chatbot-form"), "ChatBotPanel should have a chatbot form");
-  assert.ok(content.includes("chatbot-answer"), "ChatBotPanel should have an answer container");
+  assert.ok(content.includes("chatbot-transcript"), "ChatBotPanel should have a transcript container");
+  assert.ok(content.includes("chatbot-suggestion"), "ChatBotPanel should have suggestion chips");
+  assert.ok(content.includes("SUGGESTED_QUESTIONS"), "ChatBotPanel should have suggested questions");
+  assert.ok(content.includes("isSubmitting"), "ChatBotPanel should track submitting state");
+  assert.ok(content.includes("Why is this page risky?"), "ChatBotPanel should include default suggested questions");
 });
 
 test("WeeklyReportPanel renders alerts, top domains, risky downloads, cookie issues, extension risks, and recommendations", async () => {

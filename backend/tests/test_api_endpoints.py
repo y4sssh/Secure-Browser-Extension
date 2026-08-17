@@ -70,6 +70,41 @@ def test_chat_explain_endpoint(app_client):
     assert "answer" in response.json()
 
 
+def test_chat_explain_handles_what_should_i_do(app_client):
+    payload = {
+        "question": "What should I do?",
+        "evidence": {"verdict": "high_risk", "reasons": ["Suspicious form detected"]},
+    }
+    response = app_client.post("/api/v1/chat/explain", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert "answer" in body
+    assert "avoid entering credentials" in body["answer"].lower()
+
+
+def test_chat_explain_handles_is_it_safe(app_client):
+    payload = {
+        "question": "Is this safe?",
+        "evidence": {"verdict": "trusted", "reasons": []},
+    }
+    response = app_client.post("/api/v1/chat/explain", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert "answer" in body
+
+
+def test_chat_explain_handles_empty_evidence(app_client):
+    payload = {
+        "question": "Why is this risky?",
+        "evidence": {},
+    }
+    response = app_client.post("/api/v1/chat/explain", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert "answer" in body
+    assert len(body["answer"]) > 0
+
+
 def test_reputation_virustotal_url_endpoint(app_client):
     payload = {"url": "https://example.com/login"}
     response = app_client.post("/api/v1/reputation/virustotal/url", json=payload)

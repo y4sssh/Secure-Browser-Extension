@@ -11,3 +11,4 @@
 {"clientId": "test-client", "pageEvidence": {"hostname": "example.test", "signals": {"passwordFieldCount": 1}, "scores": {"finalTrustScore": 45}, "reasons": ["Cross-domain password form"]}}
 {"clientId": "test-client", "pageEvidence": {"hostname": "example.test", "signals": {"passwordFieldCount": 1}, "scores": {"finalTrustScore": 45}, "reasons": ["Cross-domain password form"]}}
 {"clientId": "test-client", "pageEvidence": {"hostname": "example.test", "signals": {"passwordFieldCount": 1}, "scores": {"finalTrustScore": 45}, "reasons": ["Cross-domain password form"]}}
+{"clientId": "test-client", "pageEvidence": {"hostname": "example.test", "signals": {"passwordFieldCount": 1}, "scores": {"finalTrustScore": 45}, "reasons": ["Cross-domain password form"]}}

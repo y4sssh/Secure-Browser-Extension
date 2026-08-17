@@ -51,22 +51,66 @@ async def analyze_text(req: TextAnalyzeRequest):
 @router.post("/chat/explain")
 async def chat_explain(req: ChatExplainRequest):
     evidence = req.evidence or {}
+    question = (req.question or "").strip().lower()
     verdict = str(evidence.get("verdict", "unknown risk")).replace("_", " ")
-    reasons = evidence.get("reasons") or []
-    primary_reason = "" if not reasons else reasons[0]
-    if isinstance(primary_reason, dict):
-        primary_reason = primary_reason.get("message", str(primary_reason))
+    reasons = [r.get("message", r) if isinstance(r, dict) else r for r in (evidence.get("reasons") or [])]
+    signals = evidence.get("signals") or {}
+    scores = evidence.get("scores") or {}
+    url = evidence.get("url") or evidence.get("origin") or "this page"
 
-    if not primary_reason:
-        primary_reason = "This page has suspicious signals and should be reviewed carefully."
+    if not reasons:
+        reasons = ["suspicious signals detected"]
 
-    answer = f"This page is considered {verdict}. {primary_reason}"
+    primary_reason = reasons[0]
+    secondary_reasons = reasons[1:4]
 
-    if "what should i do" in req.question.lower() or "what now" in req.question.lower():
+    if "what should i do" in question or "what now" in question or "advice" in question:
         answer = (
-            "This page looks risky. Avoid entering credentials, verify the site's domain, "
+            f"This page is considered {verdict}. {primary_reason} "
+            "Avoid entering credentials, verify the site's domain directly, "
             "and close the page if you are unsure."
         )
+    elif "is this safe" in question or "safe" in question:
+        if verdict == "high risk" or verdict == "risky":
+            answer = (
+                f"This page is not considered safe. It is flagged as {verdict} because: {primary_reason}. "
+                "Do not enter sensitive information here."
+            )
+        else:
+            answer = (
+                f"This page is currently considered {verdict}. "
+                "While it does not show strong risk signals, always verify the domain and be cautious with sensitive data."
+            )
+    elif "why" in question or "because" in question or "reason" in question:
+        answer = f"This page is considered {verdict}. {primary_reason}"
+        if secondary_reasons:
+            answer += " Additional signals: " + "; ".join(secondary_reasons) + "."
+    elif "form" in question or "login" in question:
+        if signals.get("formPostsCrossOrigin") or signals.get("crossDomain"):
+            answer = (
+                "A login or password form on this page submits to a different domain than the page itself. "
+                "This is a common phishing technique. Do not enter credentials."
+            )
+        else:
+            answer = (
+                "No cross-origin form submission was detected, but the page still shows other risk signals. "
+                "Review the verdict and reasons above before entering any data."
+            )
+    elif "domain" in question or "url" in question or "brand" in question:
+        claimed = evidence.get("claimedBrands") or []
+        if claimed:
+            answer = (
+                f"The page claims to be {', '.join(claimed)} but is hosted on {url}. "
+                "Brand and domain mismatch is a strong phishing indicator."
+            )
+        else:
+            answer = (
+                f"The page is hosted at {url}. Review the trust score and risk reasons before proceeding."
+            )
+    else:
+        answer = f"This page is considered {verdict}. {primary_reason}"
+        if secondary_reasons:
+            answer += " Other signals include: " + "; ".join(secondary_reasons) + "."
 
     return {"answer": answer}
 
