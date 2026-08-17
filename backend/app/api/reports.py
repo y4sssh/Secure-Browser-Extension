@@ -65,6 +65,28 @@ def _extract_domain(url: str) -> str:
         return ""
 
 
+def _build_recommendations(analyses: list[dict[str, Any]], verdict_counts: Counter) -> list[str]:
+    recommendations = [
+        "Review recent pages before entering credentials.",
+        "Keep your extension and browser up to date.",
+        "Close high-risk pages and avoid entering sensitive data.",
+    ]
+
+    high_risk = verdict_counts.get("high_risk", 0)
+    if high_risk > 0:
+        recommendations.insert(0, f"{high_risk} high-risk page(s) detected this week. Review them before entering any credentials.")
+
+    reasons = _flatten_reasons(analyses)
+    if any("cross-origin" in r.lower() or "cross domain" in r.lower() for r in reasons):
+        recommendations.append("Check forms that submit to a different domain before entering credentials.")
+    if any("http" in r.lower() and "insecure" in r.lower() for r in reasons):
+        recommendations.append("Avoid submitting sensitive data over HTTP connections.")
+    if any("brand" in r.lower() and "mismatch" in r.lower() for r in reasons):
+        recommendations.append("Verify claimed brand pages by typing the URL directly instead of following links.")
+
+    return recommendations[:6]
+
+
 @router.get("/reports/weekly")
 async def get_weekly_report(clientId: str | None = Query(None, max_length=64)) -> dict[str, Any]:
     today = date.today()
@@ -88,6 +110,20 @@ async def get_weekly_report(clientId: str | None = Query(None, max_length=64)) -
         {"hostname": hostname, "count": count}
         for hostname, count in top_domains.most_common(5)
     ]
+
+    alerts = [
+        {
+            "url": entry.get("url") or entry.get("origin") or "",
+            "verdict": entry.get("verdict"),
+            "score": entry.get("scores", {}).get("finalTrustScore"),
+            "reasons": (entry.get("reasons") or [])[:3],
+            "timestamp": entry.get("timestamp"),
+        }
+        for entry in sorted(
+            high_risk_pages,
+            key=lambda item: item.get("scores", {}).get("finalTrustScore", 0),
+        )
+    ][:10]
 
     if total_pages == 0:
         summary = "No page analyses were recorded this week."
@@ -113,9 +149,6 @@ async def get_weekly_report(clientId: str | None = Query(None, max_length=64)) -
             }
             for entry in sorted(high_risk_pages, key=lambda item: item.get("scores", {}).get("finalTrustScore", 0))
         ][:5],
-        "recommendations": [
-            "Review recent pages before entering credentials.",
-            "Keep your extension and browser up to date.",
-            "Close high-risk pages and avoid entering sensitive data.",
-        ],
+        "alerts": alerts,
+        "recommendations": _build_recommendations(analyses, verdict_counts),
     }

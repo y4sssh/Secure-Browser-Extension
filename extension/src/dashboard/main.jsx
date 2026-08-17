@@ -8,6 +8,7 @@ import { FormGuardTimeline } from "../components/FormGuardTimeline";
 import { ScanSummaryPanel } from "../components/ScanSummaryPanel";
 import CookieHealthPanel from "../components/CookieHealthPanel";
 import ExtensionHealthPanel from "../components/ExtensionHealthPanel";
+import { ChatBotPanel } from "../components/ChatBotPanel";
 import ExposureMap from "../components/ExposureMap";
 import { WeeklyReportPanel } from "../components/WeeklyReportPanel";
 import { SignalGrid } from "../components/SignalGrid";
@@ -15,6 +16,7 @@ import { TrustMeter } from "../components/TrustMeter";
 import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
 import { sendRuntimeMessage } from "../lib/chrome/runtime";
 import { formatTimestamp, getPrimaryScore, getTrustLabel } from "../lib/evidence/evidenceSummary";
+import { fetchChatExplain } from "../lib/backendClient";
 import "../styles/global.css";
 
 function DashboardApp() {
@@ -56,6 +58,10 @@ function DashboardApp() {
     await Promise.all([loadRecentEvidence(), loadScanSummaries()]);
     setLoading(false);
   }, [loadRecentEvidence, loadScanSummaries]);
+
+  const handleChatAsk = useCallback(async (question, evidence) => {
+    return fetchChatExplain(question, evidence);
+  }, []);
 
   useEffect(() => {
     loadRecentEvidence();
@@ -123,6 +129,7 @@ function DashboardApp() {
       <ExtensionHealthPanel extensionScans={extensionScans} />
       <ExposureMap extensionScans={extensionScans} />
       <WeeklyReportPanel report={weeklyReport} />
+      <ChatBotPanel latestEvidence={latest} onAsk={handleChatAsk} />
 
       {!loading && evidence.length === 0 ? (
         <div className="empty-state">No page evidence stored</div>

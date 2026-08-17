@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -15,12 +16,14 @@ def app_client():
 
 
 def test_weekly_report_aggregates_evidence(tmp_path, app_client, monkeypatch):
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
     sample_file = tmp_path / "page_analyses.jsonl"
     sample_analyses = [
         {
             "url": "https://example.com/login",
             "hostname": "example.com",
-            "timestamp": "2026-08-11T12:00:00",
+            "timestamp": (week_start + timedelta(days=1)).isoformat(),
             "verdict": "high_risk",
             "scores": {"finalTrustScore": 15},
             "reasons": ["Password form submits to a different domain"],
@@ -28,7 +31,7 @@ def test_weekly_report_aggregates_evidence(tmp_path, app_client, monkeypatch):
         {
             "url": "https://example.com/account",
             "hostname": "example.com",
-            "timestamp": "2026-08-12T10:30:00",
+            "timestamp": (week_start + timedelta(days=2)).isoformat(),
             "verdict": "caution",
             "scores": {"finalTrustScore": 65},
             "reasons": ["Form posts to a different origin"],
@@ -46,3 +49,7 @@ def test_weekly_report_aggregates_evidence(tmp_path, app_client, monkeypatch):
     assert body["verdictCounts"]["high_risk"] == 1
     assert any(domain["hostname"] == "example.com" for domain in body["topDomains"])
     assert any(risk["reason"].startswith("Password form submits") for risk in body["topRisks"])
+    assert "alerts" in body
+    assert len(body["alerts"]) == 1
+    assert "recommendations" in body
+    assert len(body["recommendations"]) >= 1

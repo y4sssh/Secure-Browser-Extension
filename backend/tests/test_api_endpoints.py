@@ -90,6 +90,9 @@ def test_weekly_report_endpoint(app_client):
     body = response.json()
     assert body["clientId"] == "test-client"
     assert "weekStart" in body and "weekEnd" in body
+    assert "alerts" in body
+    assert "recommendations" in body
+    assert isinstance(body["recommendations"], list)
 
 
 def test_evidence_endpoint_rejects_raw_values(app_client, tmp_path):

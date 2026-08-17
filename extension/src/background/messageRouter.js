@@ -94,7 +94,30 @@ async function handleMessage(message, sender) {
         return { ok: false, error: `Failed to load weekly report: ${response.statusText}` };
       }
       const report = await response.json();
-      return { ok: true, ...report };
+
+      const [downloadScans, cookieScans, extensionScans, passwordScans] = await Promise.all([
+        getLatestDownloadScans(),
+        getLatestCookieScans(),
+        getLatestExtensionScans(),
+        getLatestPasswordScans(),
+      ]);
+
+      const riskyDownloads = downloadScans.filter((scan) => (scan.risk ?? 0) >= 0.3).slice(0, 10);
+      const cookieIssues = cookieScans.filter((scan) => (scan.risk ?? 0) >= 0.3).slice(0, 10);
+      const extensionRisks = extensionScans.filter((scan) => (scan.risk ?? 0) >= 0.2).slice(0, 10);
+      const passwordReuse = passwordScans.filter((scan) => scan.reuseDetected).slice(0, 10);
+
+      const merged = {
+        ...report,
+        scans: {
+          downloads: riskyDownloads,
+          cookies: cookieIssues,
+          extensions: extensionRisks,
+          passwords: passwordReuse,
+        },
+      };
+
+      return { ok: true, ...merged };
     }
 
     case MESSAGE_TYPES.RUN_COOKIE_SCAN: {
