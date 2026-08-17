@@ -9,10 +9,56 @@ export function ExtensionHealthPanel({ extensionScans = [] }) {
       </section>
     );
   }
+  const latest = extensionScans?.[0] ?? null;
+
+  // Explanation map for sensitive permissions
+  const PERMISSION_EXPLANATIONS = {
+    webRequest: "Can observe and modify network requests made by the browser.",
+    webRequestBlocking: "Can block or modify network requests before they complete.",
+    cookies: "Can read and modify cookies for sites the extension has access to.",
+    nativeMessaging: "Can communicate with native apps installed on your machine.",
+    history: "Can read your browsing history.",
+    management: "Can query and manage other installed extensions.",
+    scripting: "Can inject and execute scripts in pages the extension can access.",
+    downloads: "Can monitor and modify downloads.",
+    clipboardRead: "Can read clipboard contents when active.",
+    clipboardWrite: "Can write to the clipboard.",
+    tabs: "Can see open tabs and their URLs.",
+  };
+
+  // Aggregate permission counts across the latest scan
+  const permCount = {};
+  if (latest && Array.isArray(latest.extensions)) {
+    for (const ext of latest.extensions) {
+      const perms = Array.isArray(ext.permissions) ? ext.permissions : [];
+      for (const p of perms) {
+        permCount[p] = (permCount[p] || 0) + 1;
+      }
+    }
+  }
+
+  const riskyPermEntries = Object.entries(permCount)
+    .filter(([perm]) => PERMISSION_EXPLANATIONS[perm])
+    .sort((a, b) => b[1] - a[1]);
 
   return (
     <section className="extension-health-panel">
       <h3>Extension exposure</h3>
+      <p style={{ marginTop: 6, marginBottom: 10, color: "#333" }}>
+        <strong>Note:</strong> This panel shows exposure analysis based on installed extensions and their permissions. It is not proof that an extension is exfiltrating data.
+      </p>
+      {riskyPermEntries.length > 0 ? (
+        <div style={{ marginBottom: 10 }}>
+          <h4 style={{ margin: "6px 0" }}>Risky permissions observed</h4>
+          <ul style={{ marginTop: 6 }}>
+            {riskyPermEntries.map(([perm, count]) => (
+              <li key={perm} style={{ marginBottom: 4 }}>
+                <strong>{perm}</strong> — {PERMISSION_EXPLANATIONS[perm]} ({count} extension{count !== 1 ? "s" : ""})
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="extension-list">
         {extensionScans.map((scan) => (
           <article key={scan.timestamp} className="extension-scan-card">
