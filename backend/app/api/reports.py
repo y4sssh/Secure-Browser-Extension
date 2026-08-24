@@ -5,11 +5,26 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
 router = APIRouter()
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 EVIDENCE_FILE = os.path.abspath(os.path.join(DATA_DIR, "page_analyses.jsonl"))
+
+
+class WeeklyReportResponse(BaseModel):
+    clientId: str
+    weekStart: str
+    weekEnd: str
+    summary: str
+    pageAnalysisCount: int
+    verdictCounts: dict[str, int]
+    topDomains: list[dict[str, Any]]
+    topRisks: list[dict[str, Any]]
+    highRiskPages: list[dict[str, Any]]
+    alerts: list[dict[str, Any]]
+    recommendations: list[str]
 
 
 def _safe_parse_line(line: str) -> Any | None:
@@ -87,7 +102,7 @@ def _build_recommendations(analyses: list[dict[str, Any]], verdict_counts: Count
     return recommendations[:6]
 
 
-@router.get("/reports/weekly")
+@router.get("/reports/weekly", response_model=WeeklyReportResponse)
 async def get_weekly_report(clientId: str | None = Query(None, max_length=64)) -> dict[str, Any]:
     today = date.today()
     week_start = today - timedelta(days=today.weekday())

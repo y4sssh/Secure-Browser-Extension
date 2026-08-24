@@ -14,6 +14,12 @@ class AnalyzeRequest(BaseModel):
     redirectChain: list[str] = Field(default_factory=list)
 
 
+class AnalyzeUrlResponse(BaseModel):
+    urlRisk: float
+    features: dict[str, Any]
+    modelVersion: str
+
+
 class TextSnippet(BaseModel):
     source: str = Field(default="text", max_length=32)
     text: str = Field(max_length=160)
@@ -26,17 +32,28 @@ class TextAnalyzeRequest(BaseModel):
     cloudAiConsent: bool = False
 
 
+class TextAnalyzeResponse(BaseModel):
+    textRisk: float
+    features: dict[str, Any]
+    reasons: list[str]
+    modelVersion: str
+
+
 class ChatExplainRequest(BaseModel):
     question: str = Field(max_length=256)
     evidence: dict[str, Any] = Field(default_factory=dict)
 
 
-@router.post("/analyze/url")
+class ChatExplainResponse(BaseModel):
+    answer: str
+
+
+@router.post("/analyze/url", response_model=AnalyzeUrlResponse)
 async def analyze_url(req: AnalyzeRequest):
     return predict_url_risk_with_features(req.url, req.redirectChain)
 
 
-@router.post("/analyze/text")
+@router.post("/analyze/text", response_model=TextAnalyzeResponse)
 async def analyze_text(req: TextAnalyzeRequest):
     if not req.cloudAiConsent:
         raise HTTPException(status_code=403, detail="cloud_ai_consent_required")
@@ -48,7 +65,7 @@ async def analyze_text(req: TextAnalyzeRequest):
     return predict_text_risk(snippets, req.claimedBrands, req.pageUrl)
 
 
-@router.post("/chat/explain")
+@router.post("/chat/explain", response_model=ChatExplainResponse)
 async def chat_explain(req: ChatExplainRequest):
     evidence = req.evidence or {}
     question = (req.question or "").strip().lower()
