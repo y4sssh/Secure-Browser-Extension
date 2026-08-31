@@ -1,10 +1,10 @@
 import json
 from datetime import date, timedelta
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.db.repository import DatabaseRepository
 from backend.app.main import create_app
 from backend.app.api import reports as reports_module
 
@@ -21,6 +21,7 @@ def test_weekly_report_aggregates_evidence(tmp_path, app_client, monkeypatch):
     sample_file = tmp_path / "page_analyses.jsonl"
     sample_analyses = [
         {
+            "client_id": "test-client",
             "url": "https://example.com/login",
             "hostname": "example.com",
             "timestamp": (week_start + timedelta(days=1)).isoformat(),
@@ -29,6 +30,7 @@ def test_weekly_report_aggregates_evidence(tmp_path, app_client, monkeypatch):
             "reasons": ["Password form submits to a different domain"],
         },
         {
+            "client_id": "test-client",
             "url": "https://example.com/account",
             "hostname": "example.com",
             "timestamp": (week_start + timedelta(days=2)).isoformat(),
@@ -39,7 +41,11 @@ def test_weekly_report_aggregates_evidence(tmp_path, app_client, monkeypatch):
     ]
 
     sample_file.write_text("\n".join(json.dumps(item) for item in sample_analyses), encoding="utf-8")
-    monkeypatch.setattr(reports_module, "EVIDENCE_FILE", str(sample_file))
+
+    def test_repository():
+        return DatabaseRepository(data_dir=tmp_path, page_analyses_file=sample_file, use_mongo=False)
+
+    monkeypatch.setattr(reports_module, "get_repository", test_repository)
 
     response = app_client.get("/api/v1/reports/weekly?clientId=test-client")
     assert response.status_code == 200

@@ -1,15 +1,19 @@
-import json
-import os
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.api import evidence as evidence_module
+from backend.app.api import reports as reports_module
+from backend.app.db.repository import DatabaseRepository
 from backend.app.main import create_app
 
 
-@pytest.fixture(scope="module")
-def app_client():
+@pytest.fixture()
+def app_client(tmp_path, monkeypatch):
+    def test_repository():
+        return DatabaseRepository(data_dir=tmp_path, page_analyses_file=tmp_path / "page_analyses.jsonl", use_mongo=False)
+
+    monkeypatch.setattr(evidence_module, "get_repository", test_repository)
+    monkeypatch.setattr(reports_module, "get_repository", test_repository)
     app = create_app()
     return TestClient(app)
 
@@ -152,9 +156,7 @@ def test_weekly_report_endpoint(app_client):
     assert isinstance(body["recommendations"], list)
 
 
-def test_evidence_endpoint_rejects_raw_values(app_client, tmp_path):
-    data_dir = Path(__file__).resolve().parents[1] / "backend" / "data"
-    os.makedirs(data_dir, exist_ok=True)
+def test_evidence_endpoint_rejects_raw_values(app_client):
     payload = {
         "clientId": "test-client",
         "pageEvidence": {

@@ -1,11 +1,13 @@
-import json
 import os
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
+
+from ..db.repository import DatabaseRepository
+from ..models.database import WeeklyReportDocument
 
 router = APIRouter()
 
@@ -17,6 +19,8 @@ class WeeklyReportResponse(BaseModel):
     clientId: str
     weekStart: str
     weekEnd: str
+    reportId: str | None = None
+    storageBackend: str = "jsonl"
     summary: str
     pageAnalysisCount: int
     verdictCounts: dict[str, int]
@@ -27,39 +31,12 @@ class WeeklyReportResponse(BaseModel):
     recommendations: list[str]
 
 
-def _safe_parse_line(line: str) -> Any | None:
-    try:
-        return json.loads(line)
-    except json.JSONDecodeError:
-        return None
+def get_repository() -> DatabaseRepository:
+    return DatabaseRepository(page_analyses_file=EVIDENCE_FILE)
 
 
-def _parse_iso_timestamp(value: str) -> datetime | None:
-    try:
-        return datetime.fromisoformat(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _load_recent_analyses(week_start: date, week_end: date) -> list[dict[str, Any]]:
-    if not os.path.exists(EVIDENCE_FILE):
-        return []
-
-    analyses: list[dict[str, Any]] = []
-    with open(EVIDENCE_FILE, encoding="utf-8") as f:
-        for line in f:
-            payload = _safe_parse_line(line.strip())
-            if not isinstance(payload, dict):
-                continue
-
-            timestamp = _parse_iso_timestamp(payload.get("timestamp") or "")
-            if not timestamp:
-                continue
-
-            if week_start <= timestamp.date() <= week_end:
-                analyses.append(payload)
-
-    return analyses
+def _load_recent_analyses(week_start: date, week_end: date, client_id: str | None = None) -> list[dict[str, Any]]:
+    return get_repository().list_page_analyses(week_start, week_end, client_id)
 
 
 def _flatten_reasons(analyses: list[dict[str, Any]]) -> list[str]:
@@ -71,13 +48,6 @@ def _flatten_reasons(analyses: list[dict[str, Any]]) -> list[str]:
             elif isinstance(reason, dict):
                 reasons.append(reason.get("message", ""))
     return [r for r in reasons if r]
-
-
-def _extract_domain(url: str) -> str:
-    try:
-        return os.path.splitext(os.path.basename(url))[0] if "http" not in url else __import__("urllib.parse").urlparse(url).hostname or ""
-    except Exception:
-        return ""
 
 
 def _build_recommendations(analyses: list[dict[str, Any]], verdict_counts: Counter) -> list[str]:
@@ -107,7 +77,9 @@ async def get_weekly_report(clientId: str | None = Query(None, max_length=64)) -
     today = date.today()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
-    analyses = _load_recent_analyses(week_start, week_end)
+    report_client_id = clientId or "anonymous"
+    repository = get_repository()
+    analyses = repository.list_page_analyses(week_start, week_end, report_client_id if clientId else None)
 
     total_pages = len(analyses)
     verdict_counts = Counter((entry.get("verdict") or "unknown").lower() for entry in analyses)
@@ -128,7 +100,8 @@ async def get_weekly_report(clientId: str | None = Query(None, max_length=64)) -
 
     alerts = [
         {
-            "url": entry.get("url") or entry.get("origin") or "",
+            "hostname": entry.get("hostname") or "",
+            "urlHash": entry.get("url_hash") or entry.get("urlHash") or "",
             "verdict": entry.get("verdict"),
             "score": entry.get("scores", {}).get("finalTrustScore"),
             "reasons": (entry.get("reasons") or [])[:3],
@@ -147,10 +120,24 @@ async def get_weekly_report(clientId: str | None = Query(None, max_length=64)) -
             f"Analyzed {total_pages} page(s) this week with {verdict_counts.get('high_risk', 0)} high-risk page(s)."
         )
 
+    recommendations = _build_recommendations(analyses, verdict_counts)
+    report_id = repository.upsert_weekly_report(
+        WeeklyReportDocument(
+            client_id=report_client_id,
+            week_start=week_start,
+            week_end=week_end,
+            summary=summary,
+            top_risks=top_risks,
+            recommendations=recommendations,
+        )
+    )
+
     return {
-        "clientId": clientId or "anonymous",
+        "clientId": report_client_id,
         "weekStart": week_start.isoformat(),
         "weekEnd": week_end.isoformat(),
+        "reportId": report_id,
+        "storageBackend": "mongodb" if repository.using_mongo else "jsonl",
         "summary": summary,
         "pageAnalysisCount": total_pages,
         "verdictCounts": dict(verdict_counts),
@@ -158,12 +145,13 @@ async def get_weekly_report(clientId: str | None = Query(None, max_length=64)) -
         "topRisks": top_risks,
         "highRiskPages": [
             {
-                "url": entry.get("url") or entry.get("origin") or "",
+                "hostname": entry.get("hostname") or "",
+                "urlHash": entry.get("url_hash") or entry.get("urlHash") or "",
                 "verdict": entry.get("verdict"),
                 "score": entry.get("scores", {}).get("finalTrustScore"),
             }
             for entry in sorted(high_risk_pages, key=lambda item: item.get("scores", {}).get("finalTrustScore", 0))
         ][:5],
         "alerts": alerts,
-        "recommendations": _build_recommendations(analyses, verdict_counts),
+        "recommendations": recommendations,
     }

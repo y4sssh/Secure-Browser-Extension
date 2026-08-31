@@ -63,6 +63,7 @@
 ### POST /api/v1/evidence
 
 - Description: Ingest sanitized page evidence from the extension.
+- Persistence: stores a Phase 15 `page_analyses` record with `client_id`, `timestamp`, `hostname`, `url_hash`, `signals`, `scores`, `verdict`, `reasons`, and `model_versions`. If a raw `url` is present for compatibility, the backend hashes it and does not persist the raw URL.
 - Request body:
   ```json
   {
@@ -80,6 +81,9 @@
   ```json
   {
     "stored": true,
+    "analysisId": "generated-record-id",
+    "alertId": "generated-alert-id-if-risky",
+    "storageBackend": "jsonl",
     "serverRisk": 0.72,
     "recommendations": ["Do not enter credentials on this page."]
   }
@@ -110,3 +114,11 @@
 - Reject any payload containing raw passwords, cookie values, email addresses, phone numbers, or unredacted HTML.
 - Require `cloudAiConsent` for text analysis requests.
 - Keep reputation API keys and external service credentials only on the backend.
+
+## Database Collections
+
+- `page_analyses`: `_id`, `client_id`, `timestamp`, `hostname`, `url_hash`, `signals`, `scores`, `verdict`, `reasons`, `model_versions`.
+- `alerts`: `_id`, `client_id`, `timestamp`, `alert_type`, `severity`, `hostname`, `title`, `reasons`, `resolved`.
+- `downloads`: `_id`, `client_id`, `timestamp`, `filename_hash`, `source_hostname`, `danger_state`, `risk_score`, `user_consented_external_scan`.
+- `extension_findings`: `_id`, `client_id`, `timestamp`, `extension_id_hash`, `name`, `permissions`, `host_permissions`, `install_type`, `enabled`, `risk_score`, `reasons`.
+- `weekly_reports`: `_id`, `client_id`, `week_start`, `week_end`, `summary`, `top_risks`, `recommendations`.

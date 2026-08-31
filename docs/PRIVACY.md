@@ -36,5 +36,6 @@
 
 - Evidence ingestion rejects payloads containing raw secrets, email addresses, phone numbers, tokens, or full HTML bodies.
 - The backend stores only sanitized evidence and derived risk scores.
+- Page analysis records persist `hostname` and `url_hash`, not raw URLs, query strings, or fragments.
 - Any optional external reputation checks (e.g. VirusTotal) are performed from the backend with the API key kept server-side.
 - Chat explanations are generated from structured evidence only and do not accept raw sensitive content.
