@@ -1,0 +1,3 @@
+url,label,source,date
+https://example.com/login,benign,sample,2026-09-01T00:00:00Z
+http://phishy.bad.example.com/login/verify,phish,sample,2026-09-01T00:00:00Z
