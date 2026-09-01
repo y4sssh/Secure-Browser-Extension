@@ -17,3 +17,4 @@
 {"clientId": "test-client", "pageEvidence": {"hostname": "example.test", "signals": {"passwordFieldCount": 1}, "scores": {"finalTrustScore": 45}, "reasons": ["Cross-domain password form"]}}
 {"clientId": "test-client", "pageEvidence": {"hostname": "example.test", "signals": {"passwordFieldCount": 1}, "scores": {"finalTrustScore": 45}, "reasons": ["Cross-domain password form"]}}
 {"clientId": "test-client", "pageEvidence": {"hostname": "example.test", "signals": {"passwordFieldCount": 1}, "scores": {"finalTrustScore": 45}, "reasons": ["Cross-domain password form"]}}
+{"_id": "b04536f1c93d4c3e85826c7c44466937", "client_id": "local", "hostname": "example.com", "model_versions": {}, "reasons": [], "scores": {"finalTrustScore": 85}, "signals": {}, "timestamp": "2026-09-01T02:38:22.693477Z", "url_hash": "a461758d8f4e0782dfa6fe66b6cdd0023c6d6894d56b4866364795c211b780f0", "verdict": "trusted"}
