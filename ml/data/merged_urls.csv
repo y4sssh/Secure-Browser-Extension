@@ -1,3 +1,5 @@
 url,label,source,date
 https://example.com/login,unknown,sample_urls.csv,
 http://phishy.bad.example.com/login/verify,unknown,sample_urls.csv,
+https://example.com/login,unknown,merged_urls.csv,
+http://phishy.bad.example.com/login/verify,unknown,merged_urls.csv,
