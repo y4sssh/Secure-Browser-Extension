@@ -1,6 +1,32 @@
 # Secure-Browser-Extension
 
+
 Secure-Browser-Extension is a privacy-first Chrome browser extension prototype that detects suspicious page activity, phishing risk, and unsafe form behavior by combining URL, form, text, visual, and brand evidence. This `README` has been expanded to document recent implementation work, fixes, dataset tooling, model stubs, build steps, and debugging notes to help run the live demo and reproduce results.
+
+## At a glance (plain English)
+
+- What it is: a Chrome extension that scans pages for login/forms and flags suspicious or phishing-like behavior with an explainable trust score.
+- What runs where: page scanning runs in a small content script, background logic runs in an MV3 service worker, UI runs in a React popup and dashboard, and heavier analysis runs on a local FastAPI backend.
+- How to demo: run the backend (`uvicorn`), serve `test-sites` on port 8001, build the extension into `extension/dist`, and load the unpacked extension in Chrome.
+- Why this is useful: combines URL heuristics, text/brand signals, and simple visual cues to surface likely phishing pages without uploading sensitive text.
+
+## Plain-English per-phase summary
+
+- Phase 1 — Scaffold & UI: created the extension structure, the manifest, a background service worker, a content script to scan pages, and basic popup/dashboard pages.
+- Phase 2 — Evidence & storage: implemented structured evidence, a small local evidence store (Chrome storage), and helpers to show recent scans in the UI.
+- Phase 3 — Dynamic scanning (FormGuard): added DOM observers, form/credential detection, iframe and overlay handling, and a timeline for form changes and suspicious events.
+- Phase 4 — Backend & ingestion: added a FastAPI demo backend to accept sanitized evidence and provide simple analysis endpoints used by the extension during demo runs.
+- Phase 5 — URL analysis: added a stronger rule-based URL scoring module (host, path, TLD, punycode, redirects) and returned structured features from the backend.
+- Phase 6 — Text/brand & fusion: added sanitized text snippet scoring, brand mismatch checks, a fusion model stub that combines signals into a final risk/trust score, and a chat/explain endpoint.
+
+## Other notable changes (brief)
+
+- Fixed backend import error (added repo root to `sys.path` when running from `backend/`) so local `ml` imports work during development.
+- Avoided port conflicts by serving demo pages on `8001` and backend on `8000` so API calls reach the FastAPI server.
+- Patched built `extension/dist/manifest.json` or build process so content scripts using `import` work as ES modules (or bundled) in Chrome.
+- Added dataset tooling in `ml/` to download, normalize, and merge sample feed data for training/evaluation experiments.
+
+If you want this condensed further into a single A4 cheat-sheet or a short slide, I can generate that next.
 
 ## Current Status
 
