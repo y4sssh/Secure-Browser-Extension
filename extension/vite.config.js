@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -14,8 +14,59 @@ function copyManifest() {
   };
 }
 
+// Content scripts in Manifest V3 must be self-contained. Vite outputs ES
+// module chunks for shared code, but Chrome content scripts load as classic
+// scripts unless "type": "module" is explicitly set. To avoid
+// "Cannot use import statement outside a module" errors we inline all
+// local chunk imports into contentScript.js as a single self-contained file.
+function inlineContentScript() {
+  return {
+    name: "inline-content-script",
+    apply: "build",
+    closeBundle() {
+      const distDir = resolve(__dirname, "dist", "assets");
+      const mainPath = resolve(distDir, "contentScript.js");
+      let code = readFileSync(mainPath, "utf8");
+
+      // Match import statements: import X from "./m"; import {X,Y} from "./m"; import "./m";
+      const importRegex = /import\b(?:[^'";]*?\bfrom\s*)?["']((\.\.?\/[^"']+))["'];?/g;
+
+      let changed = true;
+      while (changed) {
+        changed = false;
+        importRegex.lastIndex = 0;
+        const match = importRegex.exec(code);
+        if (!match) break;
+
+        const modulePath = match[1].trim();
+        if (!modulePath.startsWith("./")) continue;
+
+        // The import path may or may not include .js extension
+        const candidatePaths = [
+          resolve(distDir, modulePath),
+          resolve(distDir, modulePath + ".js"),
+        ];
+
+        for (const chunkPath of candidatePaths) {
+          try {
+            const chunkCode = readFileSync(chunkPath, "utf8");
+            code = code.replace(match[0], "");
+            code = chunkCode + "\n" + code;
+            changed = true;
+            break;
+          } catch {
+            // Try next candidate path
+          }
+        }
+      }
+
+      writeFileSync(mainPath, code, "utf8");
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), copyManifest()],
+  plugins: [react(), copyManifest(), inlineContentScript()],
   publicDir: "public",
   build: {
     outDir: "dist",
