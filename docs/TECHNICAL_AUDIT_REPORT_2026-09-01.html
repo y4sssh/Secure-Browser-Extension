@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Secure Browser Extension - Technical Audit Report</title>
+  <style>
+    @page { size: A4; margin: 16mm 14mm; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #182230; font-size: 9.4pt; line-height: 1.36; }
+    h1 { color: #0b3b66; font-size: 22pt; margin: 0 0 4px; }
+    h2 { color: #0b3b66; font-size: 14pt; margin: 22px 0 8px; border-bottom: 1px solid #b8ccdd; padding-bottom: 3px; page-break-after: avoid; }
+    h3 { color: #175c92; font-size: 11pt; margin: 15px 0 5px; page-break-after: avoid; }
+    h4 { color: #175c92; font-size: 10pt; margin: 11px 0 3px; }
+    p { margin: 5px 0; }
+    ul, ol { margin: 5px 0 8px 18px; padding: 0; }
+    li { margin: 2px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 7px 0 12px; page-break-inside: auto; font-size: 8.3pt; }
+    tr { page-break-inside: avoid; }
+    th { background: #0b3b66; color: white; text-align: left; }
+    th, td { border: 1px solid #c6d2dc; padding: 4px 5px; vertical-align: top; }
+    td code, p code { font-family: Consolas, monospace; font-size: 8.2pt; color: #503b00; }
+    .subtitle { color: #526579; font-size: 11pt; margin-bottom: 12px; }
+    .notice { background: #fff3cd; border-left: 4px solid #d39e00; padding: 8px 10px; margin: 10px 0; }
+    .critical { background: #fce8e6; border-left: 4px solid #c5221f; padding: 8px 10px; margin: 10px 0; }
+    .good { background: #e6f4ea; border-left: 4px solid #1e8e3e; padding: 8px 10px; margin: 10px 0; }
+    .diagram { background: #f4f7fa; border: 1px solid #c6d2dc; padding: 10px; font-family: Consolas, monospace; white-space: pre-wrap; font-size: 8.5pt; }
+    .small { font-size: 8.2pt; color: #526579; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <h1>Secure Browser Extension</h1>
+  <div class="subtitle">Deep technical audit, progress report, presentation material, and implementation roadmap</div>
+  <p><strong>Audit date:</strong> 1 September 2026 &nbsp; | &nbsp; <strong>Repository:</strong> <code>/home/error/Documents/Secure-Browser-Extension</code></p>
+  <div class="critical"><strong>Headline finding:</strong> The project contains substantial source implementation, but a fresh production extension build is currently blocked. Chrome rejects the built content script with <code>Cannot use import statement outside a module</code>, so page evidence does not reach the popup or dashboard.</div>
+
+  <h2>1. Project overview</h2>
+  <p><strong>Project title:</strong> Secure Browser Extension.</p>
+  <p><strong>Problem solved:</strong> phishing pages, credential-harvesting forms, unsafe downloads, weak cookie settings, password reuse, and risky installed-extension exposure are difficult for ordinary users to assess while browsing.</p>
+  <p><strong>Main objective:</strong> build a privacy-first Chrome extension that detects suspicious browser activity through explainable evidence rather than a black-box warning.</p>
+  <p><strong>Intended users:</strong> general Chrome users, students, evaluators, and security-aware users who need understandable browsing-risk alerts.</p>
+  <p><strong>Expected final product:</strong> Chrome MV3 extension, React popup/dashboard, FastAPI service, MongoDB-backed sanitized evidence, trained URL/text/visual models, reports, chatbot, and evaluation results.</p>
+  <p><strong>What makes it useful:</strong> it combines URL, form, brand/domain, text, download, cookie, password, and extension-permission evidence. It is designed to explain why a page is risky and to minimize sensitive-data collection.</p>
+
+  <h3>Implemented features</h3>
+  <ul>
+    <li>Local URL, form, and brand/domain rule scoring.</li>
+    <li>Dynamic FormGuard logic using DOM observers.</li>
+    <li>React popup/dashboard source UI and local Chrome storage.</li>
+    <li>Download, cookie, password, and extension-exposure scanner source modules.</li>
+    <li>FastAPI health, analysis, evidence, reports, chat, and placeholder reputation endpoints.</li>
+    <li>JSONL fallback persistence, MongoDB repository design, test fixtures, and automated tests.</li>
+  </ul>
+
+  <h2>2. Current project status</h2>
+  <div class="notice"><strong>Evidence-based overall completion: 45%.</strong> This is above a pure scaffold, because many modules have source implementation and tests. It is not higher because the main extension runtime is broken, ML is not trained/evaluated, VirusTotal is stubbed, MongoDB is unverified, and deployment/CI/evaluation are absent.</div>
+  <table><thead><tr><th>Module / feature</th><th>Planned</th><th>Implemented</th><th>Partial</th><th>Working now?</th><th>Progress</th><th>Key files</th></tr></thead><tbody>
+    <tr><td>Foundation documentation</td><td>Yes</td><td>Yes</td><td>Some docs stale</td><td>Yes</td><td>80%</td><td><code>docs/</code></td></tr>
+    <tr><td>MV3 scaffold</td><td>Yes</td><td>Yes</td><td>Release packaging issue</td><td><strong>No</strong></td><td>55%</td><td><code>extension/manifest.json</code>, <code>vite.config.js</code></td></tr>
+    <tr><td>Evidence/local scoring</td><td>Yes</td><td>Yes</td><td>Not live in build</td><td>Source only</td><td>70%</td><td><code>schema.js</code>, <code>finalScore.js</code></td></tr>
+    <tr><td>FormGuard</td><td>Yes</td><td>Yes</td><td>Not live in build</td><td>Source only</td><td>75%</td><td><code>pageScanner.js</code>, <code>formScore.js</code></td></tr>
+    <tr><td>BrandGuard</td><td>Yes</td><td>Yes</td><td>Rules only</td><td>Source only</td><td>65%</td><td><code>brandGuardScore.js</code></td></tr>
+    <tr><td>Popup/dashboard</td><td>Yes</td><td>Yes</td><td>No live evidence</td><td>Blocked</td><td>55%</td><td><code>popup/</code>, <code>dashboard/</code></td></tr>
+    <tr><td>Backend/API</td><td>Yes</td><td>Yes</td><td>Stubs/no auth</td><td>Local only</td><td>60%</td><td><code>backend/app/api/</code></td></tr>
+    <tr><td>Database</td><td>Yes</td><td>JSONL fallback</td><td>Mongo unverified</td><td>Partial</td><td>50%</td><td><code>db/</code>, <code>models/database.py</code></td></tr>
+    <tr><td>Download/cookie/password/extension scans</td><td>Yes</td><td>Source modules</td><td>Privacy/integration gaps</td><td>Partial</td><td>55-65%</td><td><code>scannerService.js</code></td></tr>
+    <tr><td>AI/ML</td><td>Yes</td><td>Rule stubs</td><td>No trained model</td><td>No</td><td>15%</td><td><code>ml/</code></td></tr>
+    <tr><td>Evaluation, CI, deployment</td><td>Yes</td><td>Plan only</td><td>Some fixtures</td><td>No</td><td>10%</td><td><code>EVALUATION_PLAN.md</code></td></tr>
+  </tbody></table>
+  <table><thead><tr><th>Area</th><th>Completion</th><th>Reason</th></tr></thead><tbody>
+    <tr><td>Overall product</td><td><strong>45%</strong></td><td>Significant prototype code exists, but primary release workflow is broken and major final-product work remains.</td></tr>
+    <tr><td>Backend</td><td>60%</td><td>Functional local APIs and fallback storage; no auth, live MongoDB, real VT, or extension ingest integration.</td></tr>
+    <tr><td>Frontend</td><td>55%</td><td>Two screens and many components exist, but cannot receive evidence from a fresh build.</td></tr>
+    <tr><td>Database</td><td>50%</td><td>Models/indexes/JSONL work; MongoDB not configured or verified.</td></tr>
+    <tr><td>AI/ML</td><td>15%</td><td>Deterministic rules and dataset helpers; no training, metrics, or model artifact.</td></tr>
+    <tr><td>API</td><td>65%</td><td>Endpoints exist, but key integrations are incomplete/stubbed.</td></tr>
+    <tr><td>Testing</td><td>55%</td><td>55 tests pass; no coverage, CI, or successful current browser E2E test.</td></tr>
+    <tr><td>Documentation</td><td>75%</td><td>Good plans and privacy docs, but some current claims are stale.</td></tr>
+  </tbody></table>
+
+  <h2>3. What has actually been completed</h2>
+  <h3>Evidence engine and local trust score</h3>
+  <p><strong>Purpose:</strong> turn page metadata into a structured evidence object with scores, verdict, reasons, and timeline. <strong>Input:</strong> URL, form metadata, page labels/headings, iframes. <strong>Processing:</strong> URL/form/brand rules plus weighted fusion. <strong>Output:</strong> trust score and explainable reasons. <strong>Status:</strong> implemented in source but blocked in installed build.</p>
+  <p><strong>Files:</strong> <code>extension/src/lib/evidence/schema.js</code>, <code>extension/src/content/pageScanner.js</code>, <code>extension/src/lib/scoring/finalScore.js</code>.</p>
+  <h3>URL analyzer</h3>
+  <p>Scores HTTP, IP hosts, embedded credentials, punycode, suspicious TLDs, unusual subdomains, long/random domains, encoded characters, phishing-themed tokens, brand mismatch, and redirects. It is deterministic rule logic, not trained XGBoost.</p>
+  <p><strong>Files:</strong> <code>urlScore.js</code>, <code>ml/url_model_stub.py</code>.</p>
+  <h3>FormGuard</h3>
+  <p>Detects password fields, hidden fields, cross-origin/cross-domain actions, HTTP submission, GET password forms, disabled autocomplete, action changes, overlays, and iframe login forms. Mutation observers re-scan relevant DOM changes without normally reading typed password values for page evidence.</p>
+  <p><strong>Files:</strong> <code>contentScript.js</code>, <code>pageScanner.js</code>, <code>formScore.js</code>.</p>
+  <h3>BrandGuard</h3>
+  <p>Uses a fixed brand dictionary to compare claimed brands in sanitized page cues with actual domains and form destinations. It produces expected-domain data and mismatch explanations. It does not use a trained NLP or visual model.</p>
+  <p><strong>Files:</strong> <code>brandProfiles.js</code>, <code>brandGuardScore.js</code>.</p>
+  <h3>Local security modules</h3>
+  <ul>
+    <li><strong>Download scanner:</strong> checks risky file extensions, double extensions, right-to-left override characters, source wording, and Chrome danger state. No file content is read/uploaded.</li>
+    <li><strong>Cookie scanner:</strong> hashes cookie names and scores Secure, HttpOnly, SameSite, and expiry after optional permission.</li>
+    <li><strong>Password analyzer:</strong> estimates strength, stores a derived fingerprint for reuse, and includes an optional HIBP k-anonymity path.</li>
+    <li><strong>Extension scanner:</strong> scores permissions, host access, development/sideload installation, and changes. It correctly avoids claiming proof of data theft.</li>
+  </ul>
+  <p><strong>Files:</strong> <code>scannerService.js</code>, <code>securityUtils.js</code>, <code>passwordAnalyzer.js</code>, <code>scanStorage.js</code>.</p>
+
+  <h2>4. Technology stack</h2>
+  <table><thead><tr><th>Category</th><th>Technology</th><th>Version</th><th>Where / why used</th></tr></thead><tbody>
+    <tr><td>Extension platform</td><td>Chrome Manifest V3</td><td>MV3</td><td>Modern extension manifest, service worker, permissions, content scripts.</td></tr>
+    <tr><td>Frontend</td><td>React</td><td>18.3.1</td><td>Popup, dashboard, and 14 UI components.</td></tr>
+    <tr><td>Build tool</td><td>Vite</td><td>8.1.5</td><td>Bundles UI and extension assets.</td></tr>
+    <tr><td>Language</td><td>JavaScript/JSX</td><td>-</td><td>Extension logic and interface.</td></tr>
+    <tr><td>Backend</td><td>Python + FastAPI</td><td>FastAPI &gt;=0.95</td><td>Local HTTP APIs.</td></tr>
+    <tr><td>Validation</td><td>Pydantic</td><td>&gt;=2.0</td><td>Request and storage models.</td></tr>
+    <tr><td>Persistence</td><td>JSONL / MongoDB design</td><td>PyMongo &gt;=4.2</td><td>JSONL currently works; Mongo is optional/unverified.</td></tr>
+    <tr><td>ML libraries</td><td>scikit-learn, XGBoost, Transformers</td><td>listed only</td><td>Future model work; no trained model currently used.</td></tr>
+    <tr><td>Testing</td><td>Node test runner, pytest</td><td>-</td><td>Extension and backend automated tests.</td></tr>
+    <tr><td>External services</td><td>HIBP, VirusTotal</td><td>-</td><td>HIBP path exists; VirusTotal routes are stubs.</td></tr>
+  </tbody></table>
+  <p>No authentication provider, cloud deployment, vector database, RAG, MCP integration, LLM provider, or trained model is implemented.</p>
+
+  <h2>5. Current architecture and data flow</h2>
+  <div class="diagram">User opens a web page
+        |
+Chrome content script
+  - URL/form/brand scanning
+  - password listener
+        |
+MV3 service worker
+  - evidence normalization
+  - local Chrome storage
+  - download/cookie/extension scan services
+        |
+Popup and dashboard
+  - score, reasons, timeline, local scans
+
+Optional local backend path
+Dashboard/chat -> FastAPI -> rule-based analysis -> JSONL or MongoDB
+
+Planned but not wired:
+Extension evidence -> FastAPI /api/v1/evidence -> database -> report</div>
+  <p>The extension source does not post evidence to <code>/api/v1/evidence</code>, <code>/analyze/url</code>, or <code>/analyze/text</code>. The chat and weekly-report paths are the only current frontend/backend connections.</p>
+
+  <h2>6. Algorithms, AI, and ML</h2>
+  <div class="notice"><strong>No trained or evaluated ML model is currently implemented.</strong> The project has deterministic security heuristics and ML-ready stubs, not proven machine-learning detection.</div>
+  <table><thead><tr><th>Technique</th><th>Input / processing / output</th><th>Advantage</th><th>Limitation</th></tr></thead><tbody>
+    <tr><td>URL rules</td><td>URL + redirects -> weighted lexical/domain rules -> URL risk</td><td>Fast and explainable</td><td>No measured accuracy</td></tr>
+    <tr><td>FormGuard</td><td>Form metadata + DOM mutations -> phishing rules -> form risk/reasons</td><td>Detects dynamic credential flows</td><td>Cannot inspect cross-origin iframe DOM</td></tr>
+    <tr><td>BrandGuard</td><td>Sanitized text + host -> brand dictionary/domain comparison -> brand risk</td><td>Works locally for known brands</td><td>Limited dictionary/no visual detection</td></tr>
+    <tr><td>Fusion</td><td>Component risks -> weighted/max fusion -> trust score</td><td>Transparent combination</td><td>Not calibrated from data</td></tr>
+    <tr><td>Download/cookie/extension rules</td><td>Metadata -> weighted security checks -> risk</td><td>Privacy-preserving</td><td>Limited to metadata</td></tr>
+  </tbody></table>
+  <p>The data folder contains only five merged URL CSV rows and three sample CSV rows. There is no training split, saved model, accuracy result, precision/recall/F1/PR-AUC, or deployed inference model.</p>
+
+  <h2>7. Database</h2>
+  <p><strong>Current technology:</strong> JSONL fallback files. <strong>Designed technology:</strong> MongoDB through PyMongo.</p>
+  <table><thead><tr><th>Collection</th><th>Important fields</th><th>Status</th></tr></thead><tbody>
+    <tr><td>page_analyses</td><td>client ID, timestamp, hostname, URL hash, signals, scores, verdict, reasons</td><td>Implemented</td></tr>
+    <tr><td>alerts</td><td>severity, hostname, title, reasons, resolved</td><td>Implemented</td></tr>
+    <tr><td>downloads</td><td>filename hash, source hostname, danger state, risk</td><td>Model/repository only</td></tr>
+    <tr><td>extension_findings</td><td>extension ID hash, permissions, host access, risk</td><td>Model/repository only</td></tr>
+    <tr><td>weekly_reports</td><td>date range, summary, risks, recommendations</td><td>Implemented</td></tr>
+  </tbody></table>
+  <p>There are no SQL tables, foreign keys, or SQL queries. <code>client_id</code> is a logical association key. Mongo indexes are defined for client/time, hostname/time, verdict/time, hashes, and weekly reports. The audit found no active <code>backend/.env</code>, so MongoDB remains unverified.</p>
+
+  <h2>8. API and backend</h2>
+  <table><thead><tr><th>Method</th><th>Endpoint</th><th>Purpose</th><th>Status</th></tr></thead><tbody>
+    <tr><td>GET</td><td>/health</td><td>Health check</td><td>Complete</td></tr>
+    <tr><td>POST</td><td>/api/v1/analyze/url</td><td>Rule-based URL analysis</td><td>Partial: no trained model</td></tr>
+    <tr><td>POST</td><td>/api/v1/analyze/text</td><td>Consent-gated text rules</td><td>Partial: no extension wiring</td></tr>
+    <tr><td>POST</td><td>/api/v1/evidence</td><td>Sanitize/store page evidence</td><td>Partial: disconnected from extension</td></tr>
+    <tr><td>POST</td><td>/api/v1/chat/explain</td><td>Template explanation</td><td>Partial: no LLM/no sanitizer</td></tr>
+    <tr><td>GET</td><td>/api/v1/reports/weekly</td><td>Weekly aggregation</td><td>Partial: local only</td></tr>
+    <tr><td>POST</td><td>/api/v1/reputation/virustotal/url</td><td>URL reputation</td><td>Incomplete: stub</td></tr>
+    <tr><td>POST</td><td>/api/v1/reputation/virustotal/file-hash</td><td>Hash reputation</td><td>Incomplete: stub</td></tr>
+  </tbody></table>
+  <div class="good"><strong>Live API verification:</strong> health returned OK; URL analysis returned <code>url-rules-v1</code>; text analysis returned HTTP 403 without consent; VirusTotal returned <code>result: stubbed</code>.</div>
+
+  <h2>9. Frontend and UI</h2>
+  <table><thead><tr><th>Screen/component</th><th>Purpose</th><th>Implemented</th><th>Backend connection</th><th>Remaining work</th></tr></thead><tbody>
+    <tr><td>Popup</td><td>Current page trust score/reasons</td><td>Yes</td><td>No</td><td>Fix content-script bundle</td></tr>
+    <tr><td>Dashboard</td><td>Evidence history, scans, reports, chat</td><td>Yes</td><td>Partial</td><td>Fix runtime/sanitize chat payload</td></tr>
+    <tr><td>Cookie/extension controls</td><td>Request permissions/run scans</td><td>Yes</td><td>No</td><td>Live browser testing</td></tr>
+    <tr><td>Consent panel</td><td>Cloud AI/HIBP preferences</td><td>Yes</td><td>Partial</td><td>Fix HIBP storage-key mismatch</td></tr>
+    <tr><td>Chat/report panels</td><td>Explanations and weekly data</td><td>Yes</td><td>Yes, local API</td><td>Auth, safe payload, export</td></tr>
+  </tbody></table>
+  <p>There are two main pages and fourteen React components. Source UI quality is good for a prototype, but the core scan-to-popup flow is currently not demo-ready.</p>
+
+  <h2>10. Security audit</h2>
+  <h3>Implemented controls</h3>
+  <ul><li>Self-only extension CSP.</li><li>Optional cookie/management permissions.</li><li>No cookie values accessed by the scanner.</li><li>No download contents read/uploaded.</li><li>Standard page evidence removes query strings/fragments.</li><li>Evidence endpoint blocks common secret/HTML/PII patterns and hashes URLs before persistence.</li><li>Tests prohibit <code>eval</code>, dynamic import, and remote executable code.</li></ul>
+  <table><thead><tr><th>Severity</th><th>Issue</th><th>Evidence</th></tr></thead><tbody>
+    <tr><td><strong>Critical</strong></td><td>Invalid built content script</td><td>Chrome rejects the production content script import.</td></tr>
+    <tr><td><strong>High</strong></td><td>Password scans store full page URL</td><td><code>passwordAnalyzer.js</code> sends <code>window.location.href</code>; service worker stores it.</td></tr>
+    <tr><td><strong>High</strong></td><td>Cookie scans retain active page URL as origin</td><td><code>runCookieScan()</code> stores raw active URL.</td></tr>
+    <tr><td><strong>High</strong></td><td>HIBP consent mismatch</td><td>UI and analyzer read/write different storage structures.</td></tr>
+    <tr><td><strong>High</strong></td><td>Chat accepts arbitrary evidence</td><td>Chat endpoint has no evidence sanitizer or authorization.</td></tr>
+    <tr><td><strong>High</strong></td><td>No auth/rate limiting</td><td>Backend is suitable for local demo only.</td></tr>
+    <tr><td><strong>High</strong></td><td>VirusTotal endpoints are stubs</td><td>They always return <code>stubbed</code>.</td></tr>
+    <tr><td>Medium</td><td>Fixed public salt rather than secret HMAC</td><td>Password fingerprint design needs hardening.</td></tr>
+    <tr><td>Medium</td><td>MongoDB unverified/JSONL concurrency limits</td><td>Fallback should not be considered production storage.</td></tr>
+    <tr><td>Low</td><td>Stale documentation claims</td><td>README test counts and new summaries do not match current audit.</td></tr>
+  </tbody></table>
+  <p>No authentication or authorization is implemented. There is no SQL database, so SQL injection is not applicable. React avoids direct HTML insertion in inspected files, but dedicated XSS testing is absent.</p>
+
+  <h2>11. Testing and validation</h2>
+  <table><thead><tr><th>Check</th><th>Expected</th><th>Actual</th><th>Status</th></tr></thead><tbody>
+    <tr><td>Extension tests</td><td>Scoring/privacy logic passes</td><td>34 passed</td><td>Pass</td></tr>
+    <tr><td>Backend tests</td><td>API/database/report tests pass</td><td>21 passed</td><td>Pass</td></tr>
+    <tr><td>Production build</td><td>Vite bundle created</td><td>Passed</td><td>Pass but insufficient</td></tr>
+    <tr><td>Production dependency audit</td><td>No high vulnerabilities</td><td>0 found</td><td>Pass</td></tr>
+    <tr><td>Python/ML smoke</td><td>Imports and demos work</td><td>Passed</td><td>Pass</td></tr>
+    <tr><td>Current Chromium extension smoke</td><td>Content script stores evidence</td><td>Module syntax error</td><td><strong>Fail</strong></td></tr>
+  </tbody></table>
+  <p>Still required: browser E2E tests, permission-flow tests, Mongo integration tests, auth/rate-limit tests, HIBP consent tests, latency tests, coverage reporting, and model-quality evaluation.</p>
+
+  <h2>12. Safest working demonstrations</h2>
+  <ol>
+    <li><strong>FastAPI URL analysis:</strong> start Uvicorn, call <code>/health</code> and <code>/api/v1/analyze/url</code>. Demonstrates explainable rule-based analysis.</li>
+    <li><strong>Automated tests:</strong> run <code>npm test</code> in <code>extension/</code> and <code>PYTHONPATH=backend python -m pytest -q backend/tests</code>. Demonstrates 55 passing tests.</li>
+    <li><strong>Fusion demo:</strong> run <code>python -m ml.fusion_model</code>. Demonstrates risk fusion, not trained AI.</li>
+  </ol>
+  <div class="notice"><strong>Do not demonstrate a freshly built unpacked extension until the content-script packaging issue is fixed.</strong></div>
+
+  <h2>13. Partially completed features</h2>
+  <table><thead><tr><th>Feature</th><th>Already done</th><th>What remains</th><th>Priority</th></tr></thead><tbody>
+    <tr><td>Extension runtime</td><td>Source/UI/manifest</td><td>Non-module content-script bundle and browser regression test</td><td>Critical</td></tr>
+    <tr><td>Backend ingestion</td><td>Sanitization and repository</td><td>Wire extension, consent, auth</td><td>High</td></tr>
+    <tr><td>URL/text AI</td><td>Rules and feature extraction</td><td>Data, training, evaluation, deployment</td><td>High</td></tr>
+    <tr><td>Visual detection</td><td>Stub</td><td>Consent, screenshot pipeline, model, tests</td><td>Medium</td></tr>
+    <tr><td>Password/cookie scans</td><td>Local scoring code</td><td>Privacy fixes and real browser tests</td><td>High</td></tr>
+    <tr><td>VirusTotal</td><td>Endpoint contracts</td><td>Real backend-only lookup and consent</td><td>Medium</td></tr>
+    <tr><td>Reports/chat</td><td>UI and templates</td><td>Safe payload, auth, export</td><td>Medium</td></tr>
+  </tbody></table>
+
+  <h2>14. Remaining-work roadmap</h2>
+  <table><thead><tr><th>Task</th><th>Reason</th><th>Priority</th><th>Effort</th><th>Expected output</th></tr></thead><tbody>
+    <tr><td>Fix content-script bundle</td><td>Core extension unusable</td><td>Critical</td><td>1-2 days</td><td>Loadable MV3 build</td></tr>
+    <tr><td>Add browser E2E regression</td><td>Prevent recurrence</td><td>Critical</td><td>1-2 days</td><td>Automated Chromium smoke test</td></tr>
+    <tr><td>Wire sanitized evidence upload</td><td>Backend disconnected</td><td>High</td><td>2-3 days</td><td>End-to-end evidence flow</td></tr>
+    <tr><td>Fix privacy/consent gaps</td><td>Data minimization inconsistency</td><td>High</td><td>1-2 days</td><td>Sanitized scan records/working opt-in</td></tr>
+    <tr><td>Add API auth/rate limit</td><td>Required before deployment</td><td>High</td><td>2-4 days</td><td>Protected API</td></tr>
+    <tr><td>Verify MongoDB</td><td>Fallback is not production DB</td><td>High</td><td>1-2 days</td><td>Real persistence test</td></tr>
+    <tr><td>Implement real VT proxy</td><td>Current endpoint is stubbed</td><td>Medium</td><td>2-3 days</td><td>Server-only reputation check</td></tr>
+    <tr><td>Train/evaluate URL model</td><td>AI claim unsupported</td><td>High</td><td>1-2 weeks</td><td>Baseline, XGBoost, metrics</td></tr>
+    <tr><td>Train text/visual models</td><td>Planned detection missing</td><td>Medium</td><td>2-4 weeks</td><td>Evaluated classifiers</td></tr>
+    <tr><td>Add CI/lint/coverage</td><td>Repeatability</td><td>Medium</td><td>1-2 days</td><td>Quality gates</td></tr>
+  </tbody></table>
+
+  <h2>15. Bugs, problems, and technical debt</h2>
+  <p><strong>Critical:</strong> content-script release bundle is invalid.</p>
+  <p><strong>High:</strong> raw URL storage in password/cookie scans; HIBP consent mismatch; unauthenticated API; unsanitized chat evidence; disconnected evidence ingestion; VT stubs.</p>
+  <p><strong>Medium:</strong> no Mongo verification; JSONL concurrency weakness; lack of browser E2E/ML evaluation; no trained models.</p>
+  <p><strong>Low:</strong> no CI/linter/coverage/deployment; stale documentation counts.</p>
+
+  <h2>16. Progress timeline</h2>
+  <table><thead><tr><th>Date/period</th><th>Git-history evidence</th></tr></thead><tbody>
+    <tr><td>2026-07-28</td><td>Initial project and Phase 1 scaffold.</td></tr>
+    <tr><td>2026-07-29</td><td>Phase 2 evidence/scoring work.</td></tr>
+    <tr><td>2026-08-04</td><td>FormGuard-related work.</td></tr>
+    <tr><td>2026-08-06</td><td>Backend and URL-analysis commits.</td></tr>
+    <tr><td>2026-08-09</td><td>BrandGuard/text work.</td></tr>
+    <tr><td>2026-08-13 to 2026-08-15</td><td>Scanner and extension-exposure work.</td></tr>
+    <tr><td>2026-08-17</td><td>Chatbot, reports, privacy updates.</td></tr>
+    <tr><td>2026-08-24 to 2026-09-01</td><td>Database/ML tooling/README updates.</td></tr>
+  </tbody></table>
+
+  <h2>17. Before vs current status</h2>
+  <table><thead><tr><th>Area</th><th>Initial state</th><th>Current state</th><th>Improvement</th></tr></thead><tbody>
+    <tr><td>Features</td><td>No usable system</td><td>Broad prototype modules</td><td>Major</td></tr>
+    <tr><td>Architecture</td><td>Basic project</td><td>MV3 + React + FastAPI + storage design</td><td>Major</td></tr>
+    <tr><td>UI</td><td>None/basic scaffold</td><td>Popup, dashboard, 14 components</td><td>Major</td></tr>
+    <tr><td>Backend/database</td><td>None</td><td>FastAPI and JSONL/Mongo design</td><td>Moderate</td></tr>
+    <tr><td>AI/ML</td><td>None</td><td>Rule fallbacks/stubs</td><td>Limited</td></tr>
+    <tr><td>Security/testing</td><td>Plan only</td><td>Privacy controls and 55 tests</td><td>Moderate</td></tr>
+    <tr><td>Deployment</td><td>None</td><td>Still none</td><td>None</td></tr>
+  </tbody></table>
+
+  <h2>18. Project metrics</h2>
+  <ul>
+    <li>86 tracked project files; 4,555 extension-source lines; 1,286 backend-application lines; 555 ML-source lines.</li>
+    <li>712 extension-test lines; 444 backend-test lines; 55 automated tests.</li>
+    <li>2 frontend screens, 14 React components, 8 API endpoints, 5 database collections, 10 HTML test fixtures.</li>
+    <li>3 production and 2 development extension dependencies; 6 backend dependencies; 5 ML dependencies listed.</li>
+    <li>No code coverage figure, CI workflow, deployment configuration, or ML performance result.</li>
+  </ul>
+
+  <h2>19. Five-to-ten-minute presentation explanation</h2>
+  <p>Secure Browser Extension is a privacy-focused Chrome extension designed to detect phishing and browser-security risks. Phishing pages often look legitimate, especially when they copy a known brand or ask users for credentials. The project addresses this by collecting safe evidence locally from the URL, form structure, domain, and sanitized page cues.</p>
+  <p>The main advanced feature is FormGuard. It checks whether password forms submit to another domain, appear dynamically, use HTTP, hide credential inputs, or change their action after loading. BrandGuard then checks whether a page claiming a known brand is hosted on an expected domain. The extension converts these signals into a trust score and an explanation.</p>
+  <p>The project uses React for the interface, Chrome MV3 for browser integration, and FastAPI for backend services. It also includes a JSONL/MongoDB persistence design and ML-ready rule stubs. At present, this is an explainable security prototype, not a complete AI product. The honest status is 45% because a fresh extension build has a content-script packaging error, the ML models are not trained, and evaluation/deployment work remains.</p>
+  <p>The next milestone is fixing the MV3 bundle and proving a current live phishing scan in Chromium. After that, the backend can be wired to the extension, privacy gaps can be fixed, and trained models can be evaluated using precision, recall, F1, and PR-AUC.</p>
+
+  <h2>20. Possible viva questions and answers</h2>
+  <table><thead><tr><th>Question</th><th>Short answer</th><th>Detailed answer / project use</th></tr></thead><tbody>
+    <tr><td>What is MV3?</td><td>Chrome extension architecture.</td><td>Uses a service worker, manifest permissions, and content scripts.</td></tr>
+    <tr><td>Why React?</td><td>Reusable UI components.</td><td>Popup/dashboard use components for alerts, scans, chat, and consent.</td></tr>
+    <tr><td>What is FormGuard?</td><td>Credential-theft detector.</td><td>Scores form destinations and dynamic form behavior.</td></tr>
+    <tr><td>Why inspect form action?</td><td>It shows where credentials go.</td><td>Cross-domain password submission is a strong phishing signal.</td></tr>
+    <tr><td>Why MutationObserver?</td><td>Forms can appear later.</td><td>It triggers rescans after relevant DOM changes.</td></tr>
+    <tr><td>What is BrandGuard?</td><td>Brand/domain mismatch logic.</td><td>It flags a claimed brand outside expected domains.</td></tr>
+    <tr><td>Is BrandGuard ML?</td><td>No.</td><td>It uses a dictionary and deterministic rules.</td></tr>
+    <tr><td>How are URLs scored?</td><td>Weighted heuristics.</td><td>Checks HTTPS, IPs, punycode, TLDs, tokens, entropy, and redirects.</td></tr>
+    <tr><td>What is evidence fusion?</td><td>Combining component scores.</td><td>Final score combines URL, form, brand, download, and extension risk.</td></tr>
+    <tr><td>Why explainability?</td><td>Users need reasons.</td><td>UI provides actionable explanations rather than only a score.</td></tr>
+    <tr><td>Does it read passwords?</td><td>Only locally for a separate analyzer.</td><td>It should not store/send raw values; current storage gaps need fixing.</td></tr>
+    <tr><td>What is HIBP k-anonymity?</td><td>Only hash prefix is sent.</td><td>First five SHA-1 characters are queried when opt-in works.</td></tr>
+    <tr><td>Why optional cookie permission?</td><td>Cookies are sensitive.</td><td>User must grant permission before metadata scanning.</td></tr>
+    <tr><td>Why hash cookie names?</td><td>Reduce local sensitivity.</td><td>Cookie values are not stored.</td></tr>
+    <tr><td>Can it inspect extension source?</td><td>No.</td><td>Chrome exposes metadata/permissions, not reliable source inspection.</td></tr>
+    <tr><td>What is exposure analysis?</td><td>Permission-based risk estimate.</td><td>It does not prove exfiltration or malicious behavior.</td></tr>
+    <tr><td>Why FastAPI?</td><td>Fast typed APIs.</td><td>It supplies analysis, evidence, reports, and chat routes.</td></tr>
+    <tr><td>Is MongoDB active?</td><td>Not verified.</td><td>The application falls back to JSONL without configuration.</td></tr>
+    <tr><td>What is JSONL?</td><td>One JSON record per line.</td><td>Useful locally but weak for concurrent production writes.</td></tr>
+    <tr><td>What does Pydantic do?</td><td>Validates data models.</td><td>It constrains API request and database document structures.</td></tr>
+    <tr><td>Is VirusTotal integrated?</td><td>No.</td><td>The current routes return a stubbed response.</td></tr>
+    <tr><td>Is XGBoost trained?</td><td>No.</td><td>It is listed as a future dependency only.</td></tr>
+    <tr><td>What dataset is used?</td><td>Small prepared URL samples.</td><td>No production-quality labelled training set or split exists.</td></tr>
+    <tr><td>What ML metrics exist?</td><td>None yet.</td><td>Evaluation plan names metrics, but no results are present.</td></tr>
+    <tr><td>What is CSP?</td><td>Script security policy.</td><td>Extension pages restrict scripts to self.</td></tr>
+    <tr><td>Is authentication implemented?</td><td>No.</td><td>Backend must be hardened before deployment.</td></tr>
+    <tr><td>What is the critical bug?</td><td>Invalid content-script bundle.</td><td>Chrome rejects its top-level import at runtime.</td></tr>
+    <tr><td>Why did build pass?</td><td>Build does not prove Chrome loading.</td><td>A browser E2E test is required.</td></tr>
+    <tr><td>What is the strongest feature?</td><td>Explainable FormGuard.</td><td>It combines form destination and dynamic behavior.</td></tr>
+    <tr><td>What is next?</td><td>Repair and live-test the build.</td><td>Then wire ingestion and complete privacy/ML work.</td></tr>
+  </tbody></table>
+
+  <h2>21. PPT structure: 18 slides</h2>
+  <table><thead><tr><th>Slide</th><th>Title</th><th>Main points / visual</th><th>What to say</th></tr></thead><tbody>
+    <tr><td>1</td><td>Title</td><td>Project name, author, guide</td><td>Introduce a privacy-first browsing-security prototype.</td></tr>
+    <tr><td>2</td><td>Problem statement</td><td>Fake login/phishing visual</td><td>Phishing pages can look genuine.</td></tr>
+    <tr><td>3</td><td>Motivation</td><td>Credential theft and risky browser activity</td><td>Users need understandable warnings.</td></tr>
+    <tr><td>4</td><td>Objective</td><td>Privacy + explainability goals</td><td>Detect risk while minimizing sensitive data.</td></tr>
+    <tr><td>5</td><td>Proposed solution</td><td>Evidence pipeline</td><td>Combine URL, forms, brands, and metadata.</td></tr>
+    <tr><td>6</td><td>Technology stack</td><td>MV3, React, FastAPI, Python</td><td>Explain each layer briefly.</td></tr>
+    <tr><td>7</td><td>Architecture</td><td>Use the text architecture diagram</td><td>Show how evidence flows locally.</td></tr>
+    <tr><td>8</td><td>FormGuard</td><td>Cross-domain form example</td><td>Explain the main phishing detector.</td></tr>
+    <tr><td>9</td><td>BrandGuard and URL analysis</td><td>Brand/domain mismatch example</td><td>Explain deterministic risk signals.</td></tr>
+    <tr><td>10</td><td>Privacy design</td><td>Collected vs not collected table</td><td>Highlight data minimization.</td></tr>
+    <tr><td>11</td><td>UI/workflow</td><td>Popup/dashboard after repair</td><td>Users see score and evidence.</td></tr>
+    <tr><td>12</td><td>Backend/API</td><td>Endpoint summary</td><td>Backend supports local services and reports.</td></tr>
+    <tr><td>13</td><td>Database</td><td>JSONL/Mongo documents</td><td>Current fallback versus final design.</td></tr>
+    <tr><td>14</td><td>Testing</td><td>34 + 21 passing tests</td><td>Be honest about missing browser E2E.</td></tr>
+    <tr><td>15</td><td>Current progress</td><td>45% chart</td><td>Source is substantial but critical work remains.</td></tr>
+    <tr><td>16</td><td>Critical issue</td><td>Vite bundle to Chrome error flow</td><td>Explain why build success was insufficient.</td></tr>
+    <tr><td>17</td><td>Roadmap</td><td>Priority table</td><td>Fix runtime, then integration and ML evaluation.</td></tr>
+    <tr><td>18</td><td>Conclusion</td><td>Expected final product</td><td>Promising prototype, not production-ready AI yet.</td></tr>
+  </tbody></table>
+
+  <h2>22. Final one-page summary</h2>
+  <p><strong>Project:</strong> Secure Browser Extension. <strong>Objective:</strong> detect phishing-style pages and browsing risks while minimizing sensitive-data collection. <strong>Current completion:</strong> 45% evidence-based implementation completion.</p>
+  <p><strong>Completed:</strong> MV3/React source, local URL/form/brand rules, FormGuard logic, scanner modules, FastAPI routes, JSONL fallback, report/chat UI, test fixtures, and 55 automated tests.</p>
+  <p><strong>In progress:</strong> extension-backend integration, privacy hardening, optional scans, Mongo verification, reports, and deterministic text/URL analysis.</p>
+  <p><strong>Not genuinely implemented:</strong> trained XGBoost/BERT/visual models, model evaluation metrics, real VirusTotal, CI/deployment, final research evaluation.</p>
+  <p><strong>Main technologies:</strong> Chrome MV3, React, Vite, JavaScript, Python, FastAPI, Pydantic, JSONL/MongoDB design, pytest, Node tests.</p>
+  <p><strong>Main algorithms:</strong> URL heuristics, FormGuard, BrandGuard, rule fusion, metadata scoring.</p>
+  <p><strong>Major problem:</strong> the production content script is invalid for Chrome, so the extension cannot currently perform a live scan after a fresh build.</p>
+  <p><strong>Next milestone:</strong> fix the content-script bundle, add a Chromium E2E test, then demonstrate a current phishing fixture and wire backend evidence ingestion.</p>
+  <hr>
+  <p class="small">Audit evidence: repository source, configuration, tests, build output, local FastAPI verification, stored-data inspection, and fresh Chromium MV3 runtime check performed on 1 September 2026.</p>
+</body>
+</html>

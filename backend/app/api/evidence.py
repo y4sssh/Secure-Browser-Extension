@@ -1,5 +1,7 @@
 import re
 from typing import Any
+from math import isfinite
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -24,6 +26,20 @@ FORBIDDEN_KEYS = {
     "rawcookie",
     "rawhtml",
     "rawpassword",
+}
+
+ALLOWED_PAGE_EVIDENCE_KEYS = {
+    "url",
+    "urlHash",
+    "url_hash",
+    "hostname",
+    "timestamp",
+    "signals",
+    "scores",
+    "verdict",
+    "reasons",
+    "modelVersions",
+    "model_versions",
 }
 
 
@@ -91,17 +107,132 @@ def contains_forbidden_value(payload: Any) -> bool:
     return False
 
 
+def _is_valid_url(u: str) -> bool:
+    try:
+        parsed = urlparse(u)
+        return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+    except Exception:
+        return False
+
+
+def _redact_sensitive_strings(value: str) -> str:
+    # Replace emails, tokens, phones and long HTML with placeholders
+    value = EMAIL_PATTERN.sub("[REDACTED_EMAIL]", value)
+    value = TOKEN_PATTERN.sub("[REDACTED_TOKEN]", value)
+    value = PHONE_PATTERN.sub("[REDACTED_PHONE]", value)
+    if HTML_TAG_PATTERN.search(value) and len(value) > 256:
+        return "[REDACTED_HTML]"
+    return value
+
+
+def _sanitize_signals(signals: Any) -> dict[str, Any]:
+    if not isinstance(signals, dict):
+        return {}
+    clean: dict[str, Any] = {}
+    for k, v in signals.items():
+        key_lower = str(k).lower()
+        if any(forbidden in key_lower for forbidden in FORBIDDEN_KEYS):
+            continue
+        if isinstance(v, str):
+            if len(v) > 1024:
+                # truncate long strings
+                v = v[:1024]
+            v = _redact_sensitive_strings(v)
+            if contains_forbidden_value(v):
+                continue
+            clean[k] = v
+        elif isinstance(v, (int, float)):
+            # keep finite numbers
+            if isinstance(v, float) and not isfinite(v):
+                continue
+            clean[k] = v
+        elif isinstance(v, list):
+            # shallow sanitize lists
+            cleaned_list = []
+            for item in v:
+                if isinstance(item, str):
+                    item = _redact_sensitive_strings(item)
+                    if contains_forbidden_value(item):
+                        continue
+                    cleaned_list.append(item)
+                elif isinstance(item, (int, float)):
+                    if isinstance(item, float) and not isfinite(item):
+                        continue
+                    cleaned_list.append(item)
+            if cleaned_list:
+                clean[k] = cleaned_list
+        elif isinstance(v, dict):
+            # recurse one level
+            nested = _sanitize_signals(v)
+            if nested:
+                clean[k] = nested
+    return clean
+
+
 @router.post("/evidence", response_model=EvidenceResponse)
 async def ingest_evidence(req: EvidenceRequest):
+    # Basic model dump and top-level forbidden content check
     payload = req.model_dump(mode="json", by_alias=True, exclude_none=True)
     if contains_forbidden_value(payload):
         raise HTTPException(status_code=400, detail="forbidden_raw_values")
 
+    page_evidence = payload.get("pageEvidence")
+    if not isinstance(page_evidence, dict):
+        raise HTTPException(status_code=400, detail="missing_page_evidence")
+
+    # Reject unknown or disallowed top-level keys in page evidence
+    for key in list(page_evidence.keys()):
+        if key not in ALLOWED_PAGE_EVIDENCE_KEYS:
+            page_evidence.pop(key, None)
+
+    # Validate URL if present
+    url = page_evidence.get("url")
+    if url and (not isinstance(url, str) or len(url) > 2048 or not _is_valid_url(url)):
+        raise HTTPException(status_code=400, detail="invalid_url")
+
+    # Validate hostname if present
+    hostname = page_evidence.get("hostname")
+    if hostname and (not isinstance(hostname, str) or len(hostname) > 253):
+        raise HTTPException(status_code=400, detail="invalid_hostname")
+
+    # Sanitize signals and scores
+    signals = _sanitize_signals(page_evidence.get("signals"))
+    raw_scores = page_evidence.get("scores") if isinstance(page_evidence.get("scores"), dict) else {}
+    scores: dict[str, Any] = {}
+    for k, v in raw_scores.items():
+        if isinstance(v, (int, float)):
+            # Accept numeric scores, coerce floats to finite values
+            if isinstance(v, float) and not isfinite(v):
+                continue
+            scores[str(k)] = v
+        elif isinstance(v, str):
+            # try to coerce numeric-like strings
+            try:
+                num = float(v)
+                if isfinite(num):
+                    scores[str(k)] = num
+            except Exception:
+                continue
+
+    # Attach sanitized fields back into payload for normalization
+    payload["pageEvidence"] = {**{k: page_evidence.get(k) for k in ("url", "urlHash", "hostname", "timestamp", "verdict", "reasons", "modelVersions") if page_evidence.get(k) is not None}, "signals": signals, "scores": scores}
+
     page_analysis = normalize_page_analysis_payload(payload)
     repository = get_repository()
-    analysis_id = repository.insert_page_analysis(page_analysis)
+    try:
+        analysis_id = repository.insert_page_analysis(page_analysis)
+    except Exception:
+        raise HTTPException(status_code=500, detail="storage_error")
+
     alert = derive_page_alert(page_analysis)
-    alert_id = repository.insert_alert(alert) if alert else None
+    alert_id = None
+    if alert:
+        try:
+            alert_id = repository.insert_alert(alert)
+        except Exception:
+            # if alert insertion fails, keep going but note no alert id
+            alert_id = None
+
     trust_score = page_analysis.scores.get("finalTrustScore")
     server_risk = 0.12
     if isinstance(trust_score, (int, float)):
