@@ -31,6 +31,19 @@ function inlineContentScript() {
       // Match import statements: import X from "./m"; import {X,Y} from "./m"; import "./m";
       const importRegex = /import\b(?:[^'";]*?\bfrom\s*)?["']((\.\.?\/[^"']+))["'];?/g;
 
+      // Strip ES module import/export statements from inlined chunk code
+      // since content scripts run as classic scripts.
+      const stripModuleSyntax = (chunkCode) => {
+        let cleaned = chunkCode;
+        // Remove export statements: export{a,o as i} from "...";  export { x };  export default x;
+        cleaned = cleaned.replace(/export\s*[^;{}]*;/g, "");
+        cleaned = cleaned.replace(/export\s*\{[^}]*\};?/g, "");
+        cleaned = cleaned.replace(/export\s+\{/g, "{");
+        // Remove any remaining import statements in the chunk
+        cleaned = cleaned.replace(/import\b[^;]*;/g, "");
+        return cleaned;
+      };
+
       let changed = true;
       while (changed) {
         changed = false;
@@ -51,7 +64,7 @@ function inlineContentScript() {
           try {
             const chunkCode = readFileSync(chunkPath, "utf8");
             code = code.replace(match[0], "");
-            code = chunkCode + "\n" + code;
+            code = stripModuleSyntax(chunkCode) + "\n" + code;
             changed = true;
             break;
           } catch {

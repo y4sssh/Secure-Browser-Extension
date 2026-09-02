@@ -132,3 +132,27 @@ test("extension has no remote code imports or eval", async () => {
     assert.ok(!content.includes("import("), `dynamic import( found in ${fullPath}`);
   }
 });
+
+test("built contentScript.js has no import or export statements", async () => {
+  const fs = await import("node:fs");
+  const contentScriptPath = join(__dirname, "..", "dist", "assets", "contentScript.js");
+  if (!fs.existsSync(contentScriptPath)) {
+    // Build hasn't run yet; skip this test
+    return;
+  }
+
+  const content = fs.readFileSync(contentScriptPath, "utf8");
+  const lines = content.split("\n");
+  for (const [index, line] of lines.entries()) {
+    const trimmed = line.trim();
+    // Check for any import/export at the start of a line
+    assert.ok(
+      !/^import\b/.test(trimmed),
+      `Import statement found at line ${index + 1}: ${trimmed.slice(0, 80)}`,
+    );
+    assert.ok(
+      !/^export\b/.test(trimmed),
+      `Export statement found at line ${index + 1}: ${trimmed.slice(0, 80)}`,
+    );
+  }
+});

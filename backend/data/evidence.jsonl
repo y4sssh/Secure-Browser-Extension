@@ -1,2 +1,4 @@
 {"clientId": "demo", "pageEvidence": {"hostname": "example.test", "signals": {}, "scores": {}, "reasons": []}}
 {"clientId": "demo-cli6667ent", "pageEvidence": {"hostname": "example.test", "signals": {}, "scores": {}, "reasons": []}}
+{"clientId": "demo", "pageEvidence": {"hostname": "example.test"}}
+null
