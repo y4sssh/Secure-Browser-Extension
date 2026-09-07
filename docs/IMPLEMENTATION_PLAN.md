@@ -1297,19 +1297,9 @@ Use that file for everyday developer workflows and quick onboarding commands.
 
 ## 22. Demo Scenarios
 
-Build local test pages for safe demonstrations:
+A curated set of safe, local demo pages and scenario run instructions are maintained in: [docs/DEMO_SCENARIOS.md](docs/DEMO_SCENARIOS.md).
 
-1. Benign login page.
-2. Fake Microsoft login page on wrong domain.
-3. Password form posting to cross-origin URL.
-4. Login form injected after 3 seconds.
-5. Login form inside iframe.
-6. HTTP page asking for password.
-7. Suspicious download filename.
-8. Cookie missing security flags.
-9. Extension with broad permissions.
-
-Never test with real live phishing pages on your main browser profile.
+Use that document to serve pages, run interactive demos, or automate Playwright tests.
 
 ## 23. Final Submission Deliverables
 
