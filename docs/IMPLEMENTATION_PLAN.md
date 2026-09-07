@@ -1309,22 +1309,9 @@ Follow that doc to produce `submission.zip` or a GitHub release containing code,
 
 ## 24. Quality Checklist
 
-Before final submission:
+A full pre-release quality and verification checklist is maintained in: [docs/QUALITY_CHECKLIST.md](docs/QUALITY_CHECKLIST.md).
 
-- Extension installs without errors.
-- Popup works.
-- Dashboard works.
-- Service worker persists state correctly.
-- Content script does not collect raw secrets.
-- Backend starts cleanly.
-- MongoDB connection works.
-- VirusTotal key is not exposed in frontend.
-- Test phishing pages trigger warnings.
-- Benign pages do not trigger excessive false positives.
-- README explains setup.
-- Privacy doc is clear.
-- Evaluation metrics are included.
-
+Use that document to run CI checks, manual QA scenarios, packaging verification, and ML reproducibility tests before final submission.
 ## 25. Best Next Step
 
 Start implementation with:
