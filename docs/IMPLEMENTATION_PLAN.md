@@ -1287,68 +1287,13 @@ A central reference with official docs, APIs, and developer guides is available 
 
 ## 20. Environment Setup
 
-Recommended versions:
-
-- Node.js 20+
-- npm 10+
-- Python 3.11+
-- Chrome latest stable
-- MongoDB local or MongoDB Atlas
-
-Backend `.env.example`:
-
-```text
-SECURE_BROWSER_ENV=development
-SECURE_BROWSER_MONGODB_URI=mongodb://localhost:27017
-SECURE_BROWSER_DB_NAME=secure_browser
-SECURE_BROWSER_VT_API_KEY=
-SECURE_BROWSER_ALLOWED_ORIGINS=http://localhost:5173,chrome-extension://EXTENSION_ID
-```
+A step-by-step environment and developer setup is maintained in: [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md).
 
 ## 21. Development Commands
 
-These commands are targets for implementation. They may not work until the folders are created.
+A focused reference of copy-paste development commands, Makefile targets, Docker snippets, and CI notes is maintained in a dedicated doc: [docs/DEVELOPMENT_COMMANDS.md](docs/DEVELOPMENT_COMMANDS.md).
 
-Extension:
-
-```bash
-cd extension
-npm install
-npm run dev
-npm run build
-```
-
-Backend:
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-ML:
-
-```bash
-cd ml
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python training/train_url_model.py
-python evaluation/evaluate_url_model.py
-```
-
-Tests:
-
-```bash
-cd backend
-pytest
-
-cd extension
-npm test
-npm run build
-```
+Use that file for everyday developer workflows and quick onboarding commands.
 
 ## 22. Demo Scenarios
 
