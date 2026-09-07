@@ -1303,33 +1303,9 @@ Use that document to serve pages, run interactive demos, or automate Playwright 
 
 ## 23. Final Submission Deliverables
 
-Code:
+A concise checklist and packaging instructions for producing the final submission are maintained in: [docs/FINAL_SUBMISSION.md](docs/FINAL_SUBMISSION.md).
 
-- Chrome extension.
-- Backend API.
-- ML training scripts.
-- Test pages.
-
-Documentation:
-
-- README.
-- Threat model.
-- Privacy design.
-- API spec.
-- Evaluation plan.
-- Research notes.
-- Final report.
-
-Demo:
-
-- Install extension.
-- Visit benign test page.
-- Visit fake phishing test page.
-- Show real-time alert.
-- Open dashboard.
-- Show evidence graph.
-- Ask chatbot why page is risky.
-- Generate weekly report.
+Follow that doc to produce `submission.zip` or a GitHub release containing code, docs, models, tests, and demo artifacts.
 
 ## 24. Quality Checklist
 
