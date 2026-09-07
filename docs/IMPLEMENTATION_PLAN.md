@@ -1278,19 +1278,7 @@ Reputation:
 
 ## 18. Research Papers to Cite
 
-Phishing and brand detection:
-
-- PhishIntention, USENIX Security 2022: https://www.usenix.org/conference/usenixsecurity22/presentation/liu-ruofan
-- PhishLLM, USENIX Security 2024: https://www.usenix.org/conference/usenixsecurity24/presentation/liu-ruofan
-- Phishpedia, USENIX Security 2021: https://www.usenix.org/conference/usenixsecurity21/presentation/lin
-- LogoMorph, USENIX Security 2024: https://www.usenix.org/conference/usenixsecurity24/presentation/hao-qingying
-- PhishDecloaker, USENIX Security 2024: https://www.usenix.org/conference/usenixsecurity24/presentation/teoh
-
-Extension security:
-
-- Hulk, USENIX Security 2014: https://www.usenix.org/conference/usenixsecurity14/technical-sessions/presentation/kapravelos
-- WebEval, USENIX Security 2015: https://www.usenix.org/conference/usenixsecurity15/technical-sessions/presentation/jagpal
-- Arcanum, USENIX Security 2024: https://www.usenix.org/conference/usenixsecurity24/presentation/xie-qinge
+A curated bibliography of research papers, short summaries, and BibTeX templates is maintained in a dedicated file: [docs/RESEARCH_PAPERS.md](docs/RESEARCH_PAPERS.md).
 
 ## 19. Official Technical Resources
 

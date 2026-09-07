@@ -238,10 +238,18 @@ export async function handlePasswordAnalysis(payload) {
 }
 
 export async function requestCookiePermission() {
+  if (!globalThis.chrome || !chrome.permissions || !chrome.permissions.request) {
+    return false;
+  }
+
   return new Promise((resolve) => {
-    chrome.permissions.request({ permissions: ["cookies"] }, (granted) => {
-      resolve(Boolean(granted));
-    });
+    try {
+      chrome.permissions.request({ permissions: ["cookies"] }, (granted) => {
+        resolve(Boolean(granted));
+      });
+    } catch (err) {
+      resolve(false);
+    }
   });
 }
 

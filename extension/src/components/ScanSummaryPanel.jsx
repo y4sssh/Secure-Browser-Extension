@@ -10,6 +10,8 @@ const PERMISSION_EXPLANATIONS = {
 export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, passwordScans }) {
   const [cookieLoading, setCookieLoading] = useState(false);
   const [cookiePermissionLoading, setCookiePermissionLoading] = useState(false);
+  const [cookiePermissionMessage, setCookiePermissionMessage] = useState(null);
+  const [cookieScanMessage, setCookieScanMessage] = useState(null);
 
   const latestDownload = downloadScans?.[0] ?? null;
   const latestCookie = cookieScans?.[0] ?? null;
@@ -30,6 +32,7 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
           <p>{latestDownload ? `Risk ${Math.round(latestDownload.risk * 100)}%` : "No downloads scanned"}</p>
           <p>{latestDownload?.filename ?? "—"}</p>
         </article>
+
         <article className="scan-card">
           <h4>Cookie scan</h4>
           <p>{latestCookie ? `Risk ${Math.round(latestCookie.risk * 100)}%` : "No cookie scan"}</p>
@@ -40,35 +43,66 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
               type="button"
               onClick={async () => {
                 setCookieLoading(true);
-                const resp = await sendRuntimeMessage({ type: MESSAGE_TYPES.RUN_COOKIE_SCAN });
-                setCookieLoading(false);
-                if (!resp?.ok) {
-                  // ignore — the dashboard refresh will show status
+                setCookieScanMessage(null);
+                try {
+                  const resp = await sendRuntimeMessage({ type: MESSAGE_TYPES.RUN_COOKIE_SCAN });
+                  setCookieLoading(false);
+                  if (!resp?.ok) {
+                    setCookieScanMessage(`Cookie scan failed: ${resp?.error || "unknown"}`);
+                  } else if (resp.scan) {
+                    setCookieScanMessage("Cookie scan completed.");
+                  } else {
+                    setCookieScanMessage("Cookie scan completed (no data returned).");
+                  }
+                } catch (err) {
+                  setCookieLoading(false);
+                  setCookieScanMessage(`Cookie scan error: ${err?.message || err}`);
                 }
               }}
             >
               {cookieLoading ? "Scanning…" : "Run cookie scan"}
             </button>
+
             <button
               className="button-link"
               type="button"
               onClick={async () => {
                 setCookiePermissionLoading(true);
-                const resp = await sendRuntimeMessage({ type: MESSAGE_TYPES.REQUEST_COOKIE_PERMISSION });
-                setCookiePermissionLoading(false);
-                if (!resp?.ok) {
-                  // ignore
+                setCookiePermissionMessage(null);
+                try {
+                  const resp = await sendRuntimeMessage({ type: MESSAGE_TYPES.REQUEST_COOKIE_PERMISSION });
+                  setCookiePermissionLoading(false);
+                  if (!resp?.ok) {
+                    setCookiePermissionMessage(`Permission request failed: ${resp?.error || "unknown"}`);
+                  } else if (resp.granted) {
+                    setCookiePermissionMessage("Cookie permission granted.");
+                  } else {
+                    setCookiePermissionMessage("Cookie permission not granted by the user.");
+                  }
+                } catch (err) {
+                  setCookiePermissionLoading(false);
+                  setCookiePermissionMessage(`Permission request error: ${err?.message || err}`);
                 }
               }}
               style={{ marginLeft: 8 }}
             >
               {cookiePermissionLoading ? "Requesting…" : "Enable cookie permission"}
             </button>
-            <p style={{ marginTop: 6, color: "#657282", fontSize: 11 }}>
-              {PERMISSION_EXPLANATIONS.cookies}
-            </p>
+
+            <p style={{ marginTop: 6, color: "#657282", fontSize: 11 }}>{PERMISSION_EXPLANATIONS.cookies}</p>
+            {cookiePermissionMessage ? (
+              <p style={{ marginTop: 6, color: cookiePermissionMessage.includes("granted") ? "#006400" : "#a94442", fontSize: 12 }}>
+                {cookiePermissionMessage}
+              </p>
+            ) : null}
+            {cookieScanMessage ? (
+              <p style={{ marginTop: 6, color: cookieScanMessage.includes("failed") ? "#a94442" : "#006400", fontSize: 12 }}>
+                {cookieScanMessage}
+              </p>
+            ) : null}
           </div>
         </article>
+
         <article className="scan-card">
           <h4>Extension scan</h4>
           <p>{latestExtension ? `Risk ${Math.round(latestExtension.risk * 100)}%` : "No extension scan"}</p>
@@ -103,11 +137,10 @@ export function ScanSummaryPanel({ downloadScans, cookieScans, extensionScans, p
             >
               {extPermissionLoading ? "Requesting…" : "Enable management permission"}
             </button>
-            <p style={{ marginTop: 6, color: "#657282", fontSize: 11 }}>
-              {PERMISSION_EXPLANATIONS.management}
-            </p>
+            <p style={{ marginTop: 6, color: "#657282", fontSize: 11 }}>{PERMISSION_EXPLANATIONS.management}</p>
           </div>
         </article>
+
         <article className="scan-card">
           <h4>Password scan</h4>
           <p>{latestPassword ? `Strength ${Math.round(latestPassword.strength * 100)}%` : "No password scan"}</p>
