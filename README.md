@@ -1,3 +1,141 @@
+# Secure Browser Extension
+
+Secure Browser Extension is a privacy-first browser extension and companion backend that detects and prevents credential phishing, brand impersonation, and unsafe form behaviors. The project is designed for research, demos, and enterprise integration.
+
+---
+
+## Table of Contents
+- [About](#about)
+- [Highlights](#highlights)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Backend (local)](#backend-local)
+  - [Extension (development)](#extension-development)
+- [Testing](#testing)
+- [Demo Scenarios](#demo-scenarios)
+- [Contributing](#contributing)
+- [Security & Privacy](#security--privacy)
+- [License](#license)
+
+---
+
+## About
+
+Secure Browser Extension is an open-source project combining a browser extension (Chrome MV3) and a Python backend (FastAPI) to detect phishing, credential-stealing forms, and brand impersonation. The project emphasizes on-device inference, privacy-preserving telemetry, and easy demo scenarios for research and evaluation.
+
+## Highlights
+
+- Privacy-preserving design: sensitive data is never stored in plaintext or sent to third parties.
+- Modular architecture: clear separation between extension UI/logic, backend APIs, and optional ML components.
+- Demo-ready: local `test-sites/` provide representative scenarios for demonstrations and automated testing.
+- Extensible: designed to add on-device models (ONNX/TF.js), enterprise webhooks, and federated learning hooks.
+
+## Architecture
+
+- `extension/`: UI, content scripts, background scripts, and dashboard for local analysis.
+- `backend/`: FastAPI app that accepts reports, runs server-side analysis, and stores aggregated results.
+- `ml/`: placeholder models, dataset preparation, and training utilities for offline experiments.
+- `test-sites/`: static pages used to exercise detection logic and demo flows.
+
+See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for detailed phases and design rationale.
+
+## Quick Start
+
+These instructions help you run the project locally for development and demos.
+
+### Prerequisites
+
+- Python 3.11+ (3.11 or later recommended)
+- Node.js 20+ and npm 10+ for extension development
+- MongoDB 6.x (optional for full backend persistence)
+
+### Backend (local)
+
+1. Install Python dependencies:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+```
+
+2. Copy and populate the example environment file:
+
+```bash
+cp backend/.env.example backend/.env
+# Edit backend/.env to set SECURE_BROWSER_VT_API_KEY and other values as needed
+```
+
+3. Run the FastAPI demo server:
+
+```bash
+cd backend
+uvicorn app.main:create_app --factory --reload
+```
+
+The backend will be available at `http://127.0.0.1:8000` by default.
+
+### Extension (development)
+
+1. Install node dependencies and run the dev server (for the dashboard UI):
+
+```bash
+cd extension
+npm install
+npm run dev
+```
+
+2. Load the extension in Chrome (developer mode):
+
+- Open `chrome://extensions`
+- Enable Developer mode
+- Click "Load unpacked" and select the `extension/` folder
+
+3. Configure the extension to point to the backend (see `extension/src/config` or in-dashboard settings).
+
+## Testing
+
+Run backend unit tests (from repository root):
+
+```bash
+PYTHONPATH=. pytest backend/tests -q
+```
+
+Frontend/unit tests (extension):
+
+```bash
+cd extension
+npm test
+```
+
+## Demo Scenarios
+
+Use the static demo pages in `test-sites/` to exercise detection scenarios locally. See [docs/DEMO_SCENARIOS.md](docs/DEMO_SCENARIOS.md) for scripted scenarios and acceptance criteria.
+
+## Contributing
+
+Contributions are welcome. Typical contribution flow:
+
+1. Fork the repository and create a feature branch.
+2. Run the test suite and linters locally.
+3. Open a pull request describing the change and the rationale.
+
+Please follow the project's privacy-first approach — never include real user credentials or secrets in PRs or demo artifacts.
+
+## Security & Privacy
+
+- Do not store raw credentials, cookies, or full page snapshots in logs.
+- Use server-side secrets (e.g., VirusTotal API keys) only in the backend and never embed them in the extension.
+- Telemetry is designed to be high-level and aggregated; see [docs/PRIVACY.md](docs/PRIVACY.md) for details.
+
+## License
+
+This project is released under the terms of the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+If you'd like, I can add GitHub Actions CI that runs the backend tests, frontend tests, and lints on each push. Want me to add that next?
 # Secure-Browser-Extension
 
 
