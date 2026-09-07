@@ -1280,42 +1280,10 @@ Reputation:
 
 A curated bibliography of research papers, short summaries, and BibTeX templates is maintained in a dedicated file: [docs/RESEARCH_PAPERS.md](docs/RESEARCH_PAPERS.md).
 
+
 ## 19. Official Technical Resources
 
-Chrome extension:
-
-- Manifest V3: https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3
-- Service worker lifecycle: https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle
-- Permissions: https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions
-- Declarative Net Request: https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest
-- Web Request: https://developer.chrome.com/docs/extensions/reference/api/webRequest
-- Management API: https://developer.chrome.com/docs/extensions/reference/api/management
-- Downloads API: https://developer.chrome.com/docs/extensions/reference/api/downloads
-- Cookies API: https://developer.chrome.com/docs/extensions/reference/api/cookies
-
-Frontend:
-
-- React: https://react.dev/
-- Vite: https://vite.dev/
-
-Backend:
-
-- FastAPI: https://fastapi.tiangolo.com/
-- MongoDB Python: https://www.mongodb.com/docs/languages/python/
-
-ML:
-
-- TensorFlow: https://www.tensorflow.org/
-- TensorFlow.js: https://www.tensorflow.org/js
-- XGBoost: https://xgboost.readthedocs.io/
-- Hugging Face Transformers: https://huggingface.co/docs/transformers/
-- ONNX Runtime Web: https://onnxruntime.ai/docs/tutorials/web/
-- scikit-learn metrics: https://scikit-learn.org/stable/modules/model_evaluation.html
-
-Testing:
-
-- Playwright: https://playwright.dev/
-- pytest: https://docs.pytest.org/
+A central reference with official docs, APIs, and developer guides is available at: [docs/TECHNICAL_RESOURCES.md](docs/TECHNICAL_RESOURCES.md).
 
 ## 20. Environment Setup
 
