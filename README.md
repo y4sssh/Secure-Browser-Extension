@@ -1,58 +1,35 @@
 # Secure Browser Extension
 
-Secure Browser Extension is a privacy-first browser extension and companion backend that detects and prevents credential phishing, brand impersonation, and unsafe form behaviors. The project is designed for research, demos, and enterprise integration.
+A privacy-first Chrome extension prototype with a companion FastAPI backend for detecting credential phishing, brand impersonation, and unsafe form behaviors. The project targets research, reproducible demos, and enterprise integration while preserving user privacy.
 
----
-
-## Table of Contents
-- [About](#about)
-- [Highlights](#highlights)
-- [Architecture](#architecture)
-- [Quick Start](#quick-start)
+Table of Contents
+- [Key features](#key-features)
+- [Quick start](#quick-start)
   - [Prerequisites](#prerequisites)
-  - [Backend (local)](#backend-local)
-  - [Extension (development)](#extension-development)
+  - [Run backend (local)](#run-backend-local)
+  - [Develop the extension](#develop-the-extension)
 - [Testing](#testing)
-- [Demo Scenarios](#demo-scenarios)
+- [Architecture overview](#architecture-overview)
 - [Contributing](#contributing)
-- [Security & Privacy](#security--privacy)
+- [Security & privacy](#security--privacy)
 - [License](#license)
 
----
+Key features
+- Privacy-preserving evidence collection and scoring with no plaintext credential storage.
+- Explainable risk scoring combining URL, form, text, visual and brand signals.
+- Lightweight FastAPI demo backend for analysis and evidence ingestion.
+- Demo pages and automated tests to reproduce scenarios locally.
 
-## About
+Quick start
+These steps get a local development environment running for the backend and extension.
 
-Secure Browser Extension is an open-source project combining a browser extension (Chrome MV3) and a Python backend (FastAPI) to detect phishing, credential-stealing forms, and brand impersonation. The project emphasizes on-device inference, privacy-preserving telemetry, and easy demo scenarios for research and evaluation.
+Prerequisites
+- Python 3.11+
+- Node.js 20+ and npm 10+
+- Optional: MongoDB 6.x for persistent backend storage
 
-## Highlights
-
-- Privacy-preserving design: sensitive data is never stored in plaintext or sent to third parties.
-- Modular architecture: clear separation between extension UI/logic, backend APIs, and optional ML components.
-- Demo-ready: local `test-sites/` provide representative scenarios for demonstrations and automated testing.
-- Extensible: designed to add on-device models (ONNX/TF.js), enterprise webhooks, and federated learning hooks.
-
-## Architecture
-
-- `extension/`: UI, content scripts, background scripts, and dashboard for local analysis.
-- `backend/`: FastAPI app that accepts reports, runs server-side analysis, and stores aggregated results.
-- `ml/`: placeholder models, dataset preparation, and training utilities for offline experiments.
-- `test-sites/`: static pages used to exercise detection logic and demo flows.
-
-See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for detailed phases and design rationale.
-
-## Quick Start
-
-These instructions help you run the project locally for development and demos.
-
-### Prerequisites
-
-- Python 3.11+ (3.11 or later recommended)
-- Node.js 20+ and npm 10+ for extension development
-- MongoDB 6.x (optional for full backend persistence)
-
-### Backend (local)
-
-1. Install Python dependencies:
+Run backend (local)
+1. Create and activate a virtual environment, then install dependencies:
 
 ```bash
 python -m venv .venv
@@ -60,25 +37,24 @@ source .venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
-2. Copy and populate the example environment file:
+2. Copy the example env and set any required secrets (do not commit secrets):
 
 ```bash
 cp backend/.env.example backend/.env
-# Edit backend/.env to set SECURE_BROWSER_VT_API_KEY and other values as needed
+# Edit backend/.env to set API keys and configuration
 ```
 
-3. Run the FastAPI demo server:
+3. Start the demo backend (development mode):
 
 ```bash
 cd backend
-uvicorn app.main:create_app --factory --reload
+uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 ```
 
-The backend will be available at `http://127.0.0.1:8000` by default.
+The backend will listen at http://127.0.0.1:8000.
 
-### Extension (development)
-
-1. Install node dependencies and run the dev server (for the dashboard UI):
+Develop the extension
+1. Install UI dependencies and run the dashboard in dev mode:
 
 ```bash
 cd extension
@@ -86,102 +62,58 @@ npm install
 npm run dev
 ```
 
-2. Load the extension in Chrome (developer mode):
-
-- Open `chrome://extensions`
-- Enable Developer mode
-- Click "Load unpacked" and select the `extension/` folder
-
-3. Configure the extension to point to the backend (see `extension/src/config` or in-dashboard settings).
-
-## Testing
-
-Run backend unit tests (from repository root):
+2. Build for distribution:
 
 ```bash
-PYTHONPATH=. pytest backend/tests -q
+npm run build
+# produced artifacts are in extension/dist
 ```
 
-Frontend/unit tests (extension):
+3. Load the extension into Chrome (Developer mode → Load unpacked → select `extension/dist`).
+
+Testing
+- Backend unit tests (from repository root):
+
+```bash
+PYTHONPATH=backend python -m pytest -q backend/tests
+```
+
+- Extension tests (run from `extension`):
 
 ```bash
 cd extension
 npm test
 ```
 
-## Demo Scenarios
+Architecture overview
+- `extension/` — Manifest V3 UI, content scripts, service worker, and dashboard.
+- `backend/` — FastAPI app with analysis, evidence ingestion, and demo routes.
+- `ml/` — dataset tools and model stubs for offline experiments.
+- `test-sites/` — static pages for demo and acceptance testing.
 
-Use the static demo pages in `test-sites/` to exercise detection scenarios locally. See [docs/DEMO_SCENARIOS.md](docs/DEMO_SCENARIOS.md) for scripted scenarios and acceptance criteria.
+See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) and [docs/API_SPEC.md](docs/API_SPEC.md) for design details and API contracts.
 
-## Contributing
+Contributing
+- Fork, create a feature branch, run tests locally, and open a PR describing changes and rationale.
+- Keep demo artifacts and test data free of real credentials or secrets.
 
-Contributions are welcome. Typical contribution flow:
+Security & privacy
+- Never log or persist raw credentials, cookies, or full user-typed values.
+- Keep backend secrets (API keys) out of client-side code and the extension bundle.
+- Telemetry is aggregated and sanitized; see [docs/PRIVACY.md](docs/PRIVACY.md) for the project privacy policy.
 
-1. Fork the repository and create a feature branch.
-2. Run the test suite and linters locally.
-3. Open a pull request describing the change and the rationale.
+License
+This project is licensed under MIT. See [LICENSE](LICENSE) for details.
 
-Please follow the project's privacy-first approach — never include real user credentials or secrets in PRs or demo artifacts.
+Next steps
+- Add GitHub Actions CI to run backend tests, extension tests, and linters on push.
+- Optionally provide a one-page cheat sheet or short slide summarizing setup and demo instructions.
 
-## Security & Privacy
+If you want, I can now:
+- add CI configuration,
+- condense this README into a one-page cheat-sheet, or
+- run the test suites and report results.
 
-- Do not store raw credentials, cookies, or full page snapshots in logs.
-- Use server-side secrets (e.g., VirusTotal API keys) only in the backend and never embed them in the extension.
-- Telemetry is designed to be high-level and aggregated; see [docs/PRIVACY.md](docs/PRIVACY.md) for details.
-
-## License
-
-This project is released under the terms of the MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-If you'd like, I can add GitHub Actions CI that runs the backend tests, frontend tests, and lints on each push. Want me to add that next?
-# Secure-Browser-Extension
-
-
-Secure-Browser-Extension is a privacy-first Chrome browser extension prototype that detects suspicious page activity, phishing risk, and unsafe form behavior by combining URL, form, text, visual, and brand evidence. This `README` has been expanded to document recent implementation work, fixes, dataset tooling, model stubs, build steps, and debugging notes to help run the live demo and reproduce results.
-
-## At a glance (plain English)
-
-- What it is: a Chrome extension that scans pages for login/forms and flags suspicious or phishing-like behavior with an explainable trust score.
-- What runs where: page scanning runs in a small content script, background logic runs in an MV3 service worker, UI runs in a React popup and dashboard, and heavier analysis runs on a local FastAPI backend.
-- How to demo: run the backend (`uvicorn`), serve `test-sites` on port 8001, build the extension into `extension/dist`, and load the unpacked extension in Chrome.
-- Why this is useful: combines URL heuristics, text/brand signals, and simple visual cues to surface likely phishing pages without uploading sensitive text.
-
-## Plain-English per-phase summary
-
-- Phase 1 — Scaffold & UI: created the extension structure, the manifest, a background service worker, a content script to scan pages, and basic popup/dashboard pages.
-- Phase 2 — Evidence & storage: implemented structured evidence, a small local evidence store (Chrome storage), and helpers to show recent scans in the UI.
-- Phase 3 — Dynamic scanning (FormGuard): added DOM observers, form/credential detection, iframe and overlay handling, and a timeline for form changes and suspicious events.
-- Phase 4 — Backend & ingestion: added a FastAPI demo backend to accept sanitized evidence and provide simple analysis endpoints used by the extension during demo runs.
-- Phase 5 — URL analysis: added a stronger rule-based URL scoring module (host, path, TLD, punycode, redirects) and returned structured features from the backend.
-- Phase 6 — Text/brand & fusion: added sanitized text snippet scoring, brand mismatch checks, a fusion model stub that combines signals into a final risk/trust score, and a chat/explain endpoint.
-
-## Other notable changes (brief)
-
-- Fixed backend import error (added repo root to `sys.path` when running from `backend/`) so local `ml` imports work during development.
-- Avoided port conflicts by serving demo pages on `8001` and backend on `8000` so API calls reach the FastAPI server.
-- Patched built `extension/dist/manifest.json` or build process so content scripts using `import` work as ES modules (or bundled) in Chrome.
-- Added dataset tooling in `ml/` to download, normalize, and merge sample feed data for training/evaluation experiments.
-
-If you want this condensed further into a single A4 cheat-sheet or a short slide, I can generate that next.
-
-## Current Status
-
-- Extension frontend build: ✅ successful
-- Extension unit tests: ✅ `12 passed`
-- Backend tests: ✅ `9 passed`
-- Phase 5 URL risk scoring: implemented as a stronger rule-based heuristic model
-- Phase 6 text analysis: implemented with sanitized snippet scoring and consent enforcement
-- Backend Phase 6 endpoints: implemented for URL analysis, text analysis, evidence ingestion, and chat explanation
-
-## Phase-by-Phase Progress
-**Summary — what's new and fixed**
-
-- **Phase 1**: Extension scaffold and UI.
-  - Created `manifest.json` for Manifest V3 and declared required/optional permissions.
-  - Added `extension/src/background/serviceWorker.js` and `extension/src/background/messageRouter.js` for event-driven runtime handling.
-  - Built React popup (`extension/src/popup/main.jsx`) and dashboard (`extension/src/dashboard/main.jsx`) pages.
   - Added the content script (`extension/src/content/contentScript.js`) to inject page scanning and listen for page lifecycle events.
   - Added extension runtime helpers in `extension/src/lib/chrome/runtime.js` and message type constants in `extension/src/lib/chrome/messageTypes.js`.
 
