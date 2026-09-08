@@ -1,5 +1,7 @@
 # Secure Browser Extension
 
+![CI](https://img.shields.io/badge/ci-pending-lightgrey) ![license-MIT](https://img.shields.io/badge/license-MIT-blue) ![python-3.11](https://img.shields.io/badge/python-3.11+-blue) ![node-20](https://img.shields.io/badge/node-20+-green)
+
 A privacy-first Chrome extension prototype with a companion FastAPI backend for detecting credential phishing, brand impersonation, and unsafe form behaviors. The project targets research, reproducible demos, and enterprise integration while preserving user privacy.
 
 Table of Contents
@@ -8,6 +10,7 @@ Table of Contents
   - [Prerequisites](#prerequisites)
   - [Run backend (local)](#run-backend-local)
   - [Develop the extension](#develop-the-extension)
+- [Examples](#examples)
 - [Testing](#testing)
 - [Architecture overview](#architecture-overview)
 - [Contributing](#contributing)
@@ -85,6 +88,33 @@ cd extension
 npm test
 ```
 
+Examples
+
+Quick API examples (assumes backend at `http://127.0.0.1:8000`)
+
+- Analyze a URL (returns risk metadata):
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/v1/analyze/url \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"http://example.com/login"}' | jq
+```
+
+- Submit sanitized evidence (demo ingestion):
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/v1/evidence \
+  -H 'Content-Type: application/json' \
+  -d '{"tabId":1, "url":"http://example.com", "evidence":{"urlRisk":0.7}}' | jq
+```
+
+Serve demo pages locally (avoid port conflict with backend):
+
+```bash
+cd test-sites
+python3 -m http.server 8001
+```
+
 Architecture overview
 - `extension/` — Manifest V3 UI, content scripts, service worker, and dashboard.
 - `backend/` — FastAPI app with analysis, evidence ingestion, and demo routes.
@@ -96,6 +126,23 @@ See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) and [docs/API_SPE
 Contributing
 - Fork, create a feature branch, run tests locally, and open a PR describing changes and rationale.
 - Keep demo artifacts and test data free of real credentials or secrets.
+
+Contributing
+
+We welcome contributions. Please follow these steps for small changes and experiments:
+
+- Fork the repository and create a descriptive branch name (e.g., `feat/url-score`).
+- Run the test suite and linters for the area you change.
+- Open a pull request with a short description, testing steps, and why the change is needed.
+
+Checklist for PRs:
+
+- [ ] Tests added or updated for new behavior
+- [ ] Linting passes
+- [ ] No real credentials or secrets in the changes
+- [ ] Documentation updated where applicable
+
+If you want to contribute larger features (models, CI, or infra), open an issue first to discuss the approach.
 
 Security & privacy
 - Never log or persist raw credentials, cookies, or full user-typed values.
