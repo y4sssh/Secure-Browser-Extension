@@ -1,7 +1,39 @@
 import React from "react";
 
+function deduplicateExtensionScans(scans) {
+  const seen = new Map();
+
+  for (const scan of Array.isArray(scans) ? scans : []) {
+    const signature = JSON.stringify({
+      extensionCount: Number(scan?.extensionCount ?? 0),
+      risk: Number(scan?.risk ?? 0),
+      reasons: Array.isArray(scan?.reasons) ? [...scan.reasons].sort() : [],
+      extensions: Array.isArray(scan?.extensions)
+        ? [...scan.extensions].map((ext) => ({
+            id: ext?.id ?? "",
+            name: ext?.name ?? "",
+            enabled: Boolean(ext?.enabled),
+            installType: ext?.installType ?? "",
+            version: ext?.version ?? "",
+            permissions: Array.isArray(ext?.permissions) ? [...ext.permissions].sort() : [],
+            hostPermissions: Array.isArray(ext?.hostPermissions) ? [...ext.hostPermissions].sort() : [],
+            risk: Number(ext?.risk ?? 0),
+          })).sort((left, right) => String(left.id).localeCompare(String(right.id)))
+        : [],
+    });
+
+    if (!seen.has(signature)) {
+      seen.set(signature, scan);
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
 export function ExtensionHealthPanel({ extensionScans = [] }) {
-  if (!Array.isArray(extensionScans) || extensionScans.length === 0) {
+  const deduplicatedScans = React.useMemo(() => deduplicateExtensionScans(extensionScans), [extensionScans]);
+
+  if (!Array.isArray(deduplicatedScans) || deduplicatedScans.length === 0) {
     return (
       <section className="extension-health-panel">
         <h3>Extension exposure</h3>
@@ -9,7 +41,7 @@ export function ExtensionHealthPanel({ extensionScans = [] }) {
       </section>
     );
   }
-  const latest = extensionScans?.[0] ?? null;
+  const latest = deduplicatedScans?.[0] ?? null;
 
   // Explanation map for sensitive permissions
   const PERMISSION_EXPLANATIONS = {
@@ -60,8 +92,8 @@ export function ExtensionHealthPanel({ extensionScans = [] }) {
         </div>
       ) : null}
       <div className="extension-list">
-        {extensionScans.map((scan) => (
-          <article key={scan.timestamp} className="extension-scan-card">
+        {deduplicatedScans.map((scan) => (
+          <article key={`${scan.timestamp}-${scan.extensionCount}-${(scan.extensions || []).map((ext) => ext.id).join("|")}`} className="extension-scan-card">
             <div className="extension-scan-header">
               <h4>{`Extensions: ${scan.extensionCount || 0}`}</h4>
               <span>{`Risk ${Math.round((scan.risk ?? 0) * 100)}%`}</span>

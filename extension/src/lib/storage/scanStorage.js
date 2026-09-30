@@ -63,9 +63,51 @@ export async function getLatestExtensionScans() {
   return normalizeList(items[EXTENSION_SCAN_KEY]);
 }
 
+function isSameExtensionScan(a, b) {
+  if (!a || !b) return false;
+
+  const aSignature = JSON.stringify({
+    extensionCount: Number(a.extensionCount ?? 0),
+    risk: Number(a.risk ?? 0),
+    reasons: Array.isArray(a.reasons) ? [...a.reasons].sort() : [],
+    extensions: Array.isArray(a.extensions)
+      ? [...a.extensions].map((ext) => ({
+          id: ext?.id ?? "",
+          name: ext?.name ?? "",
+          enabled: Boolean(ext?.enabled),
+          installType: ext?.installType ?? "",
+          version: ext?.version ?? "",
+          permissions: Array.isArray(ext?.permissions) ? [...ext.permissions].sort() : [],
+          hostPermissions: Array.isArray(ext?.hostPermissions) ? [...ext.hostPermissions].sort() : [],
+          risk: Number(ext?.risk ?? 0),
+        })).sort((left, right) => String(left.id).localeCompare(String(right.id)))
+      : [],
+  });
+
+  const bSignature = JSON.stringify({
+    extensionCount: Number(b.extensionCount ?? 0),
+    risk: Number(b.risk ?? 0),
+    reasons: Array.isArray(b.reasons) ? [...b.reasons].sort() : [],
+    extensions: Array.isArray(b.extensions)
+      ? [...b.extensions].map((ext) => ({
+          id: ext?.id ?? "",
+          name: ext?.name ?? "",
+          enabled: Boolean(ext?.enabled),
+          installType: ext?.installType ?? "",
+          version: ext?.version ?? "",
+          permissions: Array.isArray(ext?.permissions) ? [...ext.permissions].sort() : [],
+          hostPermissions: Array.isArray(ext?.hostPermissions) ? [...ext.hostPermissions].sort() : [],
+          risk: Number(ext?.risk ?? 0),
+        })).sort((left, right) => String(left.id).localeCompare(String(right.id)))
+      : [],
+  });
+
+  return aSignature === bSignature;
+}
+
 export async function saveExtensionScan(scan) {
   const existing = await getLatestExtensionScans();
-  const next = [scan, ...existing.filter((item) => item.timestamp !== scan.timestamp)].slice(0, MAX_STORED_SCANS);
+  const next = [scan, ...existing.filter((item) => !isSameExtensionScan(item, scan))].slice(0, MAX_STORED_SCANS);
   await setInChromeStorage({ [EXTENSION_SCAN_KEY]: next });
   return scan;
 }

@@ -1,6 +1,7 @@
 export const MESSAGE_TYPES = {
   PAGE_EVIDENCE_COLLECTED: "secureBrowser.pageEvidenceCollected",
   REQUEST_PAGE_SCAN: "secureBrowser.requestPageScan",
+  RISK_LOCKDOWN: "secureBrowser.riskLockdownShow",
   RISK_LOCKDOWN_SHOW: "secureBrowser.riskLockdownShow",
   RISK_LOCKDOWN_ACTION: "secureBrowser.riskLockdownAction",
   GET_LATEST_EVIDENCE: "secureBrowser.getLatestEvidence",

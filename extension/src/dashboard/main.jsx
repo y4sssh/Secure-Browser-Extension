@@ -21,6 +21,36 @@ import { formatTimestamp, getPrimaryScore, getTrustLabel } from "../lib/evidence
 import { askSecurityAssistant } from "../lib/securityAssistant";
 import "../styles/global.css";
 
+function deduplicateExtensionScans(scans) {
+  const seen = new Map();
+
+  for (const scan of Array.isArray(scans) ? scans : []) {
+    const signature = JSON.stringify({
+      extensionCount: Number(scan?.extensionCount ?? 0),
+      risk: Number(scan?.risk ?? 0),
+      reasons: Array.isArray(scan?.reasons) ? [...scan.reasons].sort() : [],
+      extensions: Array.isArray(scan?.extensions)
+        ? [...scan.extensions].map((ext) => ({
+            id: ext?.id ?? "",
+            name: ext?.name ?? "",
+            enabled: Boolean(ext?.enabled),
+            installType: ext?.installType ?? "",
+            version: ext?.version ?? "",
+            permissions: Array.isArray(ext?.permissions) ? [...ext.permissions].sort() : [],
+            hostPermissions: Array.isArray(ext?.hostPermissions) ? [...ext.hostPermissions].sort() : [],
+            risk: Number(ext?.risk ?? 0),
+          })).sort((left, right) => String(left.id).localeCompare(String(right.id)))
+        : [],
+    });
+
+    if (!seen.has(signature)) {
+      seen.set(signature, scan);
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
 function DashboardApp() {
   const [evidence, setEvidence] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +80,7 @@ function DashboardApp() {
 
     setDownloadScans(downloads?.ok ? downloads.scans ?? [] : []);
     setCookieScans(cookies?.ok ? cookies.scans ?? [] : []);
-    setExtensionScans(extensions?.ok ? extensions.scans ?? [] : []);
+    setExtensionScans(extensions?.ok ? deduplicateExtensionScans(extensions.scans ?? []) : []);
     setPasswordScans(passwords?.ok ? passwords.scans ?? [] : []);
     setWeeklyReport(report?.ok ? report : null);
   }, []);
@@ -70,7 +100,7 @@ function DashboardApp() {
   }, []);
 
   const handleExtensionScan = useCallback((scan) => {
-    setExtensionScans((previous) => [scan, ...previous.filter((item) => item.timestamp !== scan.timestamp)].slice(0, 30));
+    setExtensionScans((previous) => deduplicateExtensionScans([scan, ...previous]).slice(0, 30));
   }, []);
 
   useEffect(() => {

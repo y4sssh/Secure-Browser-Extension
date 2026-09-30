@@ -7,12 +7,14 @@ const STORAGE_KEY = "secureBrowser.consents";
 export function ConsentPanel() {
   const [cloudAiConsent, setCloudAiConsent] = useState(false);
   const [hibpConsent, setHibpConsent] = useState(false);
+  const [riskLockdownEnabled, setRiskLockdownEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getConsentSettings().then(({ cloudAi, hibp }) => {
+    getConsentSettings().then(({ cloudAi, hibp, riskLockdownEnabled: lockdownEnabled }) => {
       setCloudAiConsent(Boolean(cloudAi));
       setHibpConsent(Boolean(hibp));
+      setRiskLockdownEnabled(Boolean(lockdownEnabled));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -31,6 +33,12 @@ export function ConsentPanel() {
     const value = event.target.checked;
     setHibpConsent(value);
     updateConsent("hibp", value);
+  };
+
+  const handleRiskLockdownChange = (event) => {
+    const value = event.target.checked;
+    setRiskLockdownEnabled(value);
+    updateConsent("riskLockdownEnabled", value);
   };
 
   if (loading) {
@@ -79,6 +87,20 @@ export function ConsentPanel() {
             <p style={{ margin: "2px 0 0", color: "#657282", fontSize: 12 }}>
               <KeyRound size={12} aria-hidden="true" style={{ verticalAlign: "middle", marginRight: 4 }} />
               Allow checking password strength against known breaches using k-anonymity. Only the first 5 characters of a SHA-1 hash are sent.
+            </p>
+          </div>
+        </label>
+        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={riskLockdownEnabled}
+            onChange={handleRiskLockdownChange}
+            style={{ marginTop: 3 }}
+          />
+          <div>
+            <strong>Risk lockdown overlay</strong>
+            <p style={{ margin: "2px 0 0", color: "#657282", fontSize: 12 }}>
+              Block risky pages with a full-screen warning and a clear choice to close the tab or continue only after confirming trust.
             </p>
           </div>
         </label>

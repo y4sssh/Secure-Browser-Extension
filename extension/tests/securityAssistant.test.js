@@ -100,7 +100,26 @@ test("risky page lock screen is injected with explicit continue and close action
   assert.ok(contentScript.includes("Continue anyway"), "Overlay should offer a continue choice");
   assert.ok(contentScript.includes("Close tab"), "Overlay should offer a close-tab action");
   assert.ok(contentScript.includes("riskLockdown"), "Content script should handle a risky-page lockdown message");
+  assert.ok(contentScript.includes("Ignore for this site"), "Overlay should offer a site-level ignore option");
+  assert.ok(contentScript.includes("Recommended action"), "Overlay should surface a clear recommendation text");
   assert.ok(messageTypes.includes("RISK_LOCKDOWN"), "Background message types should include the lockdown trigger");
+});
+
+test("consent panel exposes a toggle for the risk lockdown overlay", async () => {
+  const fs = await import("node:fs");
+  const consentPanelPath = new URL("../src/components/ConsentPanel.jsx", import.meta.url);
+  const consentPanel = fs.readFileSync(consentPanelPath, "utf8");
+
+  assert.ok(consentPanel.includes("riskLockdownEnabled"), "Consent panel should include the risk-lockdown toggle");
+  assert.ok(consentPanel.includes("Risk lockdown overlay"), "Consent panel should label the global lockdown setting");
+});
+
+test("extension health panel collapses repeated identical scans", async () => {
+  const fs = await import("node:fs");
+  const extensionHealthPath = new URL("../src/components/ExtensionHealthPanel.jsx", import.meta.url);
+  const extensionHealth = fs.readFileSync(extensionHealthPath, "utf8");
+
+  assert.ok(extensionHealth.includes("deduplicatedScans"), "Panel should collapse repeated extension-scan entries before rendering");
 });
 
 test("optional permission helpers return the browser decision and check the current state", async () => {

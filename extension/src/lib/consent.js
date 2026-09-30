@@ -8,12 +8,13 @@ export function normalizeConsentSettings(raw = {}) {
   return {
     cloudAi: Boolean(flat.cloudAi ?? nested.cloudAi ?? legacy.cloudAi ?? false),
     hibp: Boolean(flat.hibp ?? nested.hibp ?? legacy.hibp ?? false),
+    riskLockdownEnabled: Boolean(flat.riskLockdownEnabled ?? nested.riskLockdownEnabled ?? legacy.riskLockdownEnabled ?? true),
   };
 }
 
 export async function getConsentSettings() {
   if (typeof chrome === "undefined" || !chrome?.storage?.local) {
-    return { cloudAi: true, hibp: true };
+    return { cloudAi: true, hibp: true, riskLockdownEnabled: true };
   }
 
   const items = await new Promise((resolve) => {
@@ -25,7 +26,7 @@ export async function getConsentSettings() {
 
 export async function setConsentSettings(nextValues = {}) {
   if (typeof chrome === "undefined" || !chrome?.storage?.local) {
-    return { cloudAi: true, hibp: true, ...nextValues };
+    return { cloudAi: true, hibp: true, riskLockdownEnabled: true, ...nextValues };
   }
 
   const items = await new Promise((resolve) => {
@@ -38,15 +39,18 @@ export async function setConsentSettings(nextValues = {}) {
     ...(items?.[CONSENT_STORAGE_KEY] || {}),
     cloudAi: merged.cloudAi,
     hibp: merged.hibp,
+    riskLockdownEnabled: merged.riskLockdownEnabled,
   };
   const secureBrowser = {
     ...(items?.secureBrowser || {}),
     cloudAi: merged.cloudAi,
     hibp: merged.hibp,
+    riskLockdownEnabled: merged.riskLockdownEnabled,
     consents: {
       ...((items?.secureBrowser && items.secureBrowser.consents) || {}),
       cloudAi: merged.cloudAi,
       hibp: merged.hibp,
+      riskLockdownEnabled: merged.riskLockdownEnabled,
     },
   };
 

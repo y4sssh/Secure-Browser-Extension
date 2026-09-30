@@ -5,6 +5,7 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
   const MESSAGE_TYPES = {
     PAGE_EVIDENCE_COLLECTED: "secureBrowser.pageEvidenceCollected",
     REQUEST_PAGE_SCAN: "secureBrowser.requestPageScan",
+    RISK_LOCKDOWN: "secureBrowser.riskLockdownShow",
     RISK_LOCKDOWN_SHOW: "secureBrowser.riskLockdownShow",
     RISK_LOCKDOWN_ACTION: "secureBrowser.riskLockdownAction",
   };
@@ -38,19 +39,46 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
   let currentRiskOverlay = null;
   let previousBodyPointerEvents = "";
 
-  function showRiskLockdown(payload = {}) {
-    if (typeof sessionStorage !== "undefined") {
-      const sessionOverride = sessionStorage.getItem("secureBrowser.riskLockdownAllowed");
-      if (sessionOverride === "true") {
-        return;
+  function getIgnoredRiskSites() {
+    try {
+      const raw = localStorage.getItem("secureBrowser.ignoredRiskSites");
+      if (!raw) {
+        return [];
       }
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function isIgnoredRiskSite(hostname) {
+    const target = String(hostname || "").toLowerCase();
+    if (!target) {
+      return false;
+    }
+    return getIgnoredRiskSites().some((site) => String(site || "").toLowerCase() === target);
+  }
+
+  function rememberIgnoredRiskSite(hostname) {
+    const target = String(hostname || "").toLowerCase();
+    if (!target) {
+      return;
     }
 
+    const nextItems = Array.from(new Set([...getIgnoredRiskSites(), target]));
+    try {
+      localStorage.setItem("secureBrowser.ignoredRiskSites", JSON.stringify(nextItems));
+    } catch {
+      // Ignore storage failures while still hiding the overlay for the current page.
+    }
+  }
+
+  function renderRiskLockdown(payload = {}, hostname) {
     if (currentRiskOverlay && currentRiskOverlay.isConnected) {
       return;
     }
 
-    const hostname = payload.hostname || window.location.hostname || "this page";
     const reasons = Array.isArray(payload.reasons) && payload.reasons.length > 0
       ? payload.reasons.slice(0, 4)
       : ["This page shows signs of phishing, fake login behavior, or credential theft risk."];
@@ -108,6 +136,21 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       reasonsList.appendChild(item);
     });
 
+    const recommendation = document.createElement("div");
+    recommendation.style.margin = "0 0 18px";
+    recommendation.style.padding = "12px 14px";
+    recommendation.style.borderRadius = "10px";
+    recommendation.style.background = "rgba(30, 41, 59, 0.9)";
+    recommendation.style.border = "1px solid rgba(96, 165, 250, 0.35)";
+    const recommendationLabel = document.createElement("strong");
+    recommendationLabel.textContent = "Recommended action";
+    const recommendationText = document.createElement("p");
+    recommendationText.textContent = "Close the tab or leave the page before entering credentials, payment details, or multi-factor codes.";
+    recommendationText.style.margin = "6px 0 0";
+    recommendationText.style.color = "#dbeafe";
+    recommendationText.style.lineHeight = "1.5";
+    recommendation.append(recommendationLabel, recommendationText);
+
     const actionRow = document.createElement("div");
     actionRow.style.display = "flex";
     actionRow.style.gap = "12px";
@@ -156,6 +199,26 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       );
     });
 
+    const ignoreButton = document.createElement("button");
+    ignoreButton.type = "button";
+    ignoreButton.textContent = "Ignore for this site";
+    ignoreButton.style.flex = "1 1 160px";
+    ignoreButton.style.padding = "12px 16px";
+    ignoreButton.style.borderRadius = "10px";
+    ignoreButton.style.border = "1px solid rgba(148, 163, 184, 0.5)";
+    ignoreButton.style.background = "#1e293b";
+    ignoreButton.style.color = "#e2e8f0";
+    ignoreButton.style.fontWeight = "600";
+    ignoreButton.style.cursor = "pointer";
+    ignoreButton.addEventListener("click", () => {
+      rememberIgnoredRiskSite(hostname);
+      hideRiskLockdown();
+      chrome.runtime.sendMessage(
+        { type: MESSAGE_TYPES.RISK_LOCKDOWN_ACTION, action: "ignore_site", tabId: payload.tabId },
+        () => void chrome.runtime.lastError,
+      );
+    });
+
     const footer = document.createElement("p");
     footer.textContent = "This is a protection overlay. You may choose to continue only if you explicitly trust the page.";
     footer.style.margin = "0";
@@ -163,8 +226,8 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     footer.style.fontSize = "12px";
     footer.style.lineHeight = "1.5";
 
-    actionRow.append(closeButton, continueButton);
-    panel.append(title, description, reasonsList, actionRow, footer);
+    actionRow.append(closeButton, continueButton, ignoreButton);
+    panel.append(title, description, reasonsList, recommendation, actionRow, footer);
     overlay.appendChild(panel);
 
     const rootNode = document.body || document.documentElement;
@@ -175,6 +238,34 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
 
     document.documentElement.appendChild(overlay);
     currentRiskOverlay = overlay;
+  }
+
+  function showRiskLockdown(payload = {}) {
+    if (typeof sessionStorage !== "undefined") {
+      const sessionOverride = sessionStorage.getItem("secureBrowser.riskLockdownAllowed");
+      if (sessionOverride === "true") {
+        return;
+      }
+    }
+
+    const hostname = payload.hostname || window.location.hostname || "this page";
+    if (isIgnoredRiskSite(hostname)) {
+      return;
+    }
+
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.get({ secureBrowser: { consents: {} } }, (items) => {
+        const settings = items?.secureBrowser?.consents || items?.["secureBrowser.consents"] || {};
+        const enabled = settings.riskLockdownEnabled ?? items?.secureBrowser?.riskLockdownEnabled ?? true;
+        if (!enabled) {
+          return;
+        }
+        renderRiskLockdown(payload, hostname);
+      });
+      return;
+    }
+
+    renderRiskLockdown(payload, hostname);
   }
 
   function hideRiskLockdown() {
