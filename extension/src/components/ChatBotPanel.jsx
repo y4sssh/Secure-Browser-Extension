@@ -23,9 +23,8 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    const trimmed = question.trim();
+  const askQuestion = async (rawQuestion) => {
+    const trimmed = String(rawQuestion ?? "").trim();
     if (!trimmed || typeof onAsk !== "function" || isSubmitting) {
       return;
     }
@@ -40,6 +39,9 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
       const response = await onAsk(trimmed, latestEvidence);
       const answer = response?.answer ?? "No answer returned.";
       setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+      if (response?.source === "local") {
+        setStatus("Answered locally from the current scan because the optional assistant service is unavailable.");
+      }
     } catch (err) {
       const errorMessage = err?.message ?? "Chatbot request failed";
       setStatus(errorMessage);
@@ -52,9 +54,16 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
     }
   };
 
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    void askQuestion(question);
+  };
+
   const handleSuggestion = (suggestion) => {
     if (isSubmitting) return;
-    setQuestion(suggestion);
+    // A suggested question is an action, not merely a text shortcut. This
+    // makes the assistant useful with one click.
+    void askQuestion(suggestion);
   };
 
   return (

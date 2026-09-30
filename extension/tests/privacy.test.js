@@ -5,6 +5,33 @@ import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+test("cloud AI consent blocks external analysis until the user opts in", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalChrome = globalThis.chrome;
+  const calls = [];
+
+  try {
+    globalThis.chrome = {
+      storage: {
+        local: {
+          get: (defaults, callback) => callback({ "secureBrowser.consents": { cloudAi: false, hibp: false } }),
+        },
+      },
+    };
+    globalThis.fetch = async (...args) => {
+      calls.push(args);
+      throw new Error("fetch should not run without cloud AI consent");
+    };
+
+    const { fetchChatExplain } = await import("../src/lib/backendClient.js");
+    await assert.rejects(() => fetchChatExplain("is this page safe?", { signals: {} }), /consent/i);
+    assert.equal(calls.length, 0, "fetch must never run without explicit cloud AI consent");
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.chrome = originalChrome;
+  }
+});
+
 test("passwordAnalyzer does not send raw password values", async () => {
   const fs = await import("node:fs");
   const path = join(__dirname, "..", "src", "content", "passwordAnalyzer.js");

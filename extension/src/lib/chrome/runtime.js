@@ -23,6 +23,52 @@ export function sendRuntimeMessage(message) {
   });
 }
 
+/**
+ * Requests an optional permission from the page that received the click.
+ *
+ * Chrome only permits this API while a user gesture is active. Keeping it in
+ * the dashboard (instead of forwarding a message to the service worker)
+ * makes the permission prompt reliable and lets the UI show a useful result.
+ */
+export function requestOptionalPermission(permission) {
+  const permissions = globalThis.chrome?.permissions;
+  if (!permission || !permissions?.request) {
+    return Promise.resolve({ granted: false, error: "Optional permissions are unavailable in this browser." });
+  }
+
+  return new Promise((resolve) => {
+    try {
+      permissions.request({ permissions: [permission] }, (granted) => {
+        const error = globalThis.chrome?.runtime?.lastError;
+        resolve({
+          granted: Boolean(granted),
+          error: error?.message || "",
+        });
+      });
+    } catch (error) {
+      resolve({ granted: false, error: error?.message || "Permission request failed." });
+    }
+  });
+}
+
+export function hasOptionalPermission(permission) {
+  const permissions = globalThis.chrome?.permissions;
+  if (!permission || !permissions?.contains) {
+    return Promise.resolve(false);
+  }
+
+  return new Promise((resolve) => {
+    try {
+      permissions.contains({ permissions: [permission] }, (granted) => {
+        void globalThis.chrome?.runtime?.lastError;
+        resolve(Boolean(granted));
+      });
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
 export function queryActiveTab() {
   if (!hasChromeRuntime() || !globalThis.chrome?.tabs?.query) {
     return Promise.resolve(null);

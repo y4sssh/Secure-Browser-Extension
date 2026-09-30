@@ -165,7 +165,11 @@ test("scan summary panel exposes enable extension scanner button", async () => {
     "Missing extension scan trigger",
   );
   assert.ok(
-    content.includes("REQUEST_MANAGEMENT_PERMISSION"),
-    "Missing management permission request trigger",
+    content.includes("requestOptionalPermission(\"management\")"),
+    "Management permission must be requested from the clicked dashboard page",
+  );
+  assert.ok(
+    content.includes("Extension scan failed:"),
+    "Extension scan failures must be visible to the user",
   );
 });

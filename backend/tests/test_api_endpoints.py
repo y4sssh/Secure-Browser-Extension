@@ -1,10 +1,10 @@
 import pytest
-from fastapi.testclient import TestClient
 
 from backend.app.api import evidence as evidence_module
 from backend.app.api import reports as reports_module
 from backend.app.db.repository import DatabaseRepository
 from backend.app.main import create_app
+from backend.tests.asgi_client import ASGIClient
 
 
 @pytest.fixture()
@@ -15,7 +15,7 @@ def app_client(tmp_path, monkeypatch):
     monkeypatch.setattr(evidence_module, "get_repository", test_repository)
     monkeypatch.setattr(reports_module, "get_repository", test_repository)
     app = create_app()
-    return TestClient(app)
+    return ASGIClient(app)
 
 
 def test_health_endpoint(app_client):
@@ -129,6 +129,40 @@ def test_chat_explain_rejects_cookie_value_in_evidence(app_client):
     assert response.status_code == 200
     body = response.json()
     assert "session=abc123" not in body.get("answer", "")
+
+
+def test_chat_explain_allow_lists_evidence_and_omits_full_url_secrets(app_client):
+    secret = "SENTINEL-chat-secret-value"
+    payload = {
+        "question": "Explain the domain risk",
+        "evidence": {
+            "url": f"https://example.test/account?token={secret}",
+            "password": secret,
+            "cookie": f"session={secret}",
+            "hostname": "signin.example.test",
+            "verdict": "high_risk",
+            "reasons": [f"token={secret}", "Password form submits to a different domain"],
+        },
+    }
+    response = app_client.post("/api/v1/chat/explain", json=payload)
+    assert response.status_code == 200
+    answer = response.json()["answer"]
+    assert "signin.example.test" in answer
+    assert secret not in answer
+    assert "/account" not in answer
+
+
+def test_chat_backend_allows_a_real_chrome_extension_origin(app_client):
+    origin = "chrome-extension://abcdefghijklmnopabcdefghijklmnop"
+    response = app_client.options(
+        "/api/v1/chat/explain",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
 
 
 def test_reputation_virustotal_url_endpoint(app_client):

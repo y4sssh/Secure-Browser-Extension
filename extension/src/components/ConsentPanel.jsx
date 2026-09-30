@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ShieldCheck, Cloud, KeyRound } from "lucide-react";
+import { getConsentSettings, setConsentSettings } from "../lib/consent.js";
 
 const STORAGE_KEY = "secureBrowser.consents";
 
@@ -9,19 +10,15 @@ export function ConsentPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    chrome.storage.local.get({ [STORAGE_KEY]: {} }, (items) => {
-      const consents = items?.[STORAGE_KEY] || {};
-      setCloudAiConsent(Boolean(consents.cloudAi));
-      setHibpConsent(Boolean(consents.hibp));
+    getConsentSettings().then(({ cloudAi, hibp }) => {
+      setCloudAiConsent(Boolean(cloudAi));
+      setHibpConsent(Boolean(hibp));
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
   const updateConsent = async (key, value) => {
-    chrome.storage.local.get({ [STORAGE_KEY]: {} }, (items) => {
-      const next = { ...(items?.[STORAGE_KEY] || {}), [key]: value };
-      chrome.storage.local.set({ [STORAGE_KEY]: next });
-    });
+    await setConsentSettings({ [key]: value });
   };
 
   const handleCloudAiChange = (event) => {

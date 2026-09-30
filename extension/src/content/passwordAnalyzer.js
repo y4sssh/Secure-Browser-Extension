@@ -1,4 +1,5 @@
 import { estimatePasswordStrength, sha256Hex } from "../lib/securityUtils";
+import { getConsentSettings } from "../lib/consent.js";
 
 const MESSAGE_TYPES = {
   PASSWORD_ANALYSIS_COLLECTED: "secureBrowser.passwordAnalysisCollected",
@@ -56,7 +57,15 @@ async function analyzePasswordInput(input) {
   const sha256 = await sha256Hex(`secure-browser-password|${value}`);
   const sha1 = await sha1Hex(value);
 
-  const pageUrl = window.location.href;
+  const pageUrl = (() => {
+    try {
+      // The scan only needs a stable site identifier for local reuse checks;
+      // never retain a path, query string, fragment, or typed form value.
+      return new URL(window.location.href).origin;
+    } catch {
+      return "";
+    }
+  })();
   const domain = (() => {
     try {
       return new URL(pageUrl).hostname;
@@ -65,12 +74,10 @@ async function analyzePasswordInput(input) {
     }
   })();
 
-  // Optional HIBP check only if user enabled it in storage
+  // Optional HIBP check only if user explicitly enabled it in storage.
   let hibpPwnedCount = 0;
   try {
-    const items = await new Promise((resolve) => chrome.storage.local.get({ secureBrowser: {} }, resolve));
-    const secureBrowser = items?.secureBrowser || {};
-    const hibpEnabled = secureBrowser.hibpEnabled ?? secureBrowser.consents?.hibp ?? false;
+    const { hibp: hibpEnabled } = await getConsentSettings();
     if (hibpEnabled) {
       hibpPwnedCount = await checkHibpKAnonymity(sha1);
     }

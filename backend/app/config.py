@@ -16,6 +16,7 @@ class Settings:
     db_name: str
     vt_api_key: str
     allowed_origins: str
+    allowed_origin_regex: str
     storage_backend: str
     mongodb_timeout_ms: int
 
@@ -26,7 +27,14 @@ class Settings:
         self.vt_api_key = os.getenv("SECURE_BROWSER_VT_API_KEY", "")
         self.allowed_origins = os.getenv(
             "SECURE_BROWSER_ALLOWED_ORIGINS",
-            "http://localhost:5173,chrome-extension://EXTENSION_ID",
+            "http://localhost:5173",
+        )
+        # An unpacked Chrome extension has a generated ID, so a placeholder
+        # origin cannot satisfy the browser's CORS check. Keep this narrow to
+        # valid Chrome extension IDs while allowing deployments to override it.
+        self.allowed_origin_regex = os.getenv(
+            "SECURE_BROWSER_ALLOWED_ORIGIN_REGEX",
+            r"^chrome-extension://[a-p]{32}$",
         )
         self.storage_backend = os.getenv("SECURE_BROWSER_STORAGE_BACKEND", "auto").lower()
         self.mongodb_timeout_ms = int(os.getenv("SECURE_BROWSER_MONGODB_TIMEOUT_MS", "1000"))

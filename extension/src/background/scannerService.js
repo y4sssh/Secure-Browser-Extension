@@ -48,6 +48,32 @@ function queryActiveTabUrl() {
   });
 }
 
+function hasOptionalPermission(permission) {
+  if (!chrome?.permissions?.contains) {
+    return Promise.resolve(false);
+  }
+
+  return new Promise((resolve) => {
+    chrome.permissions.contains({ permissions: [permission] }, (granted) => {
+      void chrome.runtime.lastError;
+      resolve(Boolean(granted));
+    });
+  });
+}
+
+function getManagedExtensions() {
+  return new Promise((resolve, reject) => {
+    chrome.management.getAll((extensions) => {
+      const error = chrome.runtime.lastError;
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+      resolve(Array.isArray(extensions) ? extensions : []);
+    });
+  });
+}
+
 function getDownloadById(downloadId) {
   return new Promise((resolve) => {
     chrome.downloads.search({ id: downloadId }, (items) => {
@@ -142,67 +168,63 @@ export async function runCookieScan() {
 }
 
 export async function runExtensionScan() {
-  if (!chrome.management || !chrome.management.getAll) {
-    throw new Error("Extension scanner unavailable");
+  if (!(await hasOptionalPermission("management"))) {
+    throw new Error("Management permission is required before running an extension scan.");
   }
 
-  return new Promise((resolve, reject) => {
-    chrome.management.getAll(async (extensions) => {
-      const error = chrome.runtime.lastError;
-      if (error) {
-        reject(new Error(error.message));
-        return;
-      }
+  if (!chrome.management?.getAll) {
+    throw new Error("Extension scanning is unavailable in this browser.");
+  }
 
-      // Load previous extension scan to detect version changes
-      const previousScans = await getLatestExtensionScans();
-      const prevLatest = previousScans?.[0] ?? null;
-      const prevVersionMap = {};
-      if (prevLatest && Array.isArray(prevLatest.extensions)) {
-        for (const e of prevLatest.extensions) {
-          if (e && e.id) prevVersionMap[e.id] = e.version || "";
-        }
-      }
+  const extensions = await getManagedExtensions();
 
-      const filtered = extensions.filter((item) => item.id !== chrome.runtime.id);
-      const scans = filtered.map((extension) => {
-        const result = scoreExtensionItem(extension);
-        const prevVersion = prevVersionMap[extension.id] ?? null;
-        const versionChanged = prevVersion && prevVersion !== (extension.version || "");
+  // Load previous extension scan to detect version changes.
+  const previousScans = await getLatestExtensionScans();
+  const prevLatest = previousScans?.[0] ?? null;
+  const prevVersionMap = {};
+  if (prevLatest && Array.isArray(prevLatest.extensions)) {
+    for (const extension of prevLatest.extensions) {
+      if (extension?.id) prevVersionMap[extension.id] = extension.version || "";
+    }
+  }
 
-        const extEntry = {
-          id: extension.id,
-          name: extension.name,
-          enabled: Boolean(extension.enabled),
-          installType: extension.installType || "unknown",
-          version: extension.version || "",
-          previousVersion: prevVersion,
-          versionChanged: Boolean(versionChanged),
-          permissions: extension.permissions ?? [],
-          hostPermissions: extension.hostPermissions ?? [],
-          risk: result.score,
-          reasons: result.reasons,
-        };
+  const filtered = extensions.filter((item) => item.id !== chrome.runtime.id);
+  const scans = filtered.map((extension) => {
+    const result = scoreExtensionItem(extension);
+    const prevVersion = prevVersionMap[extension.id] ?? null;
+    const versionChanged = prevVersion && prevVersion !== (extension.version || "");
 
-        if (versionChanged) {
-          extEntry.reasons = Array.from(new Set([...(extEntry.reasons || []), `Extension version changed from ${prevVersion} to ${extEntry.version}`]));
-        }
+    const extEntry = {
+      id: extension.id,
+      name: extension.name,
+      enabled: Boolean(extension.enabled),
+      installType: extension.installType || "unknown",
+      version: extension.version || "",
+      previousVersion: prevVersion,
+      versionChanged: Boolean(versionChanged),
+      permissions: extension.permissions ?? [],
+      hostPermissions: extension.hostPermissions ?? [],
+      risk: result.score,
+      reasons: result.reasons,
+    };
 
-        return extEntry;
-      });
+    if (versionChanged) {
+      extEntry.reasons = Array.from(new Set([...(extEntry.reasons || []), `Extension version changed from ${prevVersion} to ${extEntry.version}`]));
+    }
 
-      const combinedRisk = scans.reduce((maxRisk, item) => Math.max(maxRisk, item.risk), 0);
-      const scan = {
-        timestamp: new Date().toISOString(),
-        extensionCount: scans.length,
-        risk: combinedRisk,
-        reasons: scans.flatMap((item) => item.reasons).slice(0, 8),
-        extensions: scans,
-      };
-      await saveExtensionScan(scan);
-      resolve(scan);
-    });
+    return extEntry;
   });
+
+  const combinedRisk = scans.reduce((maxRisk, item) => Math.max(maxRisk, item.risk), 0);
+  const scan = {
+    timestamp: new Date().toISOString(),
+    extensionCount: scans.length,
+    risk: combinedRisk,
+    reasons: scans.flatMap((item) => item.reasons).slice(0, 8),
+    extensions: scans,
+  };
+  await saveExtensionScan(scan);
+  return scan;
 }
 
 export async function handlePasswordAnalysis(payload) {
@@ -254,9 +276,18 @@ export async function requestCookiePermission() {
 }
 
 export async function requestManagementPermission() {
+  if (!globalThis.chrome?.permissions?.request) {
+    return false;
+  }
+
   return new Promise((resolve) => {
-    chrome.permissions.request({ permissions: ["management"] }, (granted) => {
-      resolve(Boolean(granted));
-    });
+    try {
+      chrome.permissions.request({ permissions: ["management"] }, (granted) => {
+        void chrome.runtime.lastError;
+        resolve(Boolean(granted));
+      });
+    } catch {
+      resolve(false);
+    }
   });
 }

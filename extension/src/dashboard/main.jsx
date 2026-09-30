@@ -18,7 +18,7 @@ import ConsentPanel from "../components/ConsentPanel";
 import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
 import { sendRuntimeMessage } from "../lib/chrome/runtime";
 import { formatTimestamp, getPrimaryScore, getTrustLabel } from "../lib/evidence/evidenceSummary";
-import { fetchChatExplain } from "../lib/backendClient";
+import { askSecurityAssistant } from "../lib/securityAssistant";
 import "../styles/global.css";
 
 function DashboardApp() {
@@ -62,13 +62,41 @@ function DashboardApp() {
   }, [loadRecentEvidence, loadScanSummaries]);
 
   const handleChatAsk = useCallback(async (question, evidence) => {
-    return fetchChatExplain(question, evidence);
+    return askSecurityAssistant(question, evidence);
+  }, []);
+
+  const handleCookieScan = useCallback((scan) => {
+    setCookieScans((previous) => [scan, ...previous.filter((item) => item.domain !== scan.domain)].slice(0, 30));
+  }, []);
+
+  const handleExtensionScan = useCallback((scan) => {
+    setExtensionScans((previous) => [scan, ...previous.filter((item) => item.timestamp !== scan.timestamp)].slice(0, 30));
   }, []);
 
   useEffect(() => {
     loadRecentEvidence();
     loadScanSummaries();
   }, [loadRecentEvidence, loadScanSummaries]);
+
+  useEffect(() => {
+    const storage = globalThis.chrome?.storage;
+    if (!storage?.onChanged) return undefined;
+
+    const scanKeys = new Set([
+      "secureBrowser.downloadScans",
+      "secureBrowser.cookieScans",
+      "secureBrowser.extensionScans",
+      "secureBrowser.passwordScans",
+    ]);
+    const handleStorageChange = (changes, areaName) => {
+      if (areaName === "local" && Object.keys(changes).some((key) => scanKeys.has(key))) {
+        void loadScanSummaries();
+      }
+    };
+
+    storage.onChanged.addListener(handleStorageChange);
+    return () => storage.onChanged.removeListener(handleStorageChange);
+  }, [loadScanSummaries]);
 
   const latest = evidence[0] ?? null;
   const score = getPrimaryScore(latest);
@@ -126,6 +154,8 @@ function DashboardApp() {
         cookieScans={cookieScans}
         extensionScans={extensionScans}
         passwordScans={passwordScans}
+        onCookieScan={handleCookieScan}
+        onExtensionScan={handleExtensionScan}
       />
       <CookieHealthPanel cookieScans={cookieScans} />
       <ExtensionHealthPanel extensionScans={extensionScans} />

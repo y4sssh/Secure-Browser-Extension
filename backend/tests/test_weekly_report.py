@@ -2,17 +2,17 @@ import json
 from datetime import date, timedelta
 
 import pytest
-from fastapi.testclient import TestClient
 
 from backend.app.db.repository import DatabaseRepository
 from backend.app.main import create_app
 from backend.app.api import reports as reports_module
+from backend.tests.asgi_client import ASGIClient
 
 
 @pytest.fixture(scope="module")
 def app_client():
     app = create_app()
-    return TestClient(app)
+    return ASGIClient(app)
 
 
 def test_weekly_report_aggregates_evidence(tmp_path, app_client, monkeypatch):
