@@ -90,6 +90,19 @@ test("local assistant explains broader website risks even when the current page 
   assert.doesNotMatch(result.answer, /This page is considered trusted\./i);
 });
 
+test("risky page lock screen is injected with explicit continue and close actions", async () => {
+  const fs = await import("node:fs");
+  const contentScriptPath = new URL("../src/content/contentScript.js", import.meta.url);
+  const messageTypesPath = new URL("../src/lib/chrome/messageTypes.js", import.meta.url);
+  const contentScript = fs.readFileSync(contentScriptPath, "utf8");
+  const messageTypes = fs.readFileSync(messageTypesPath, "utf8");
+
+  assert.ok(contentScript.includes("Continue anyway"), "Overlay should offer a continue choice");
+  assert.ok(contentScript.includes("Close tab"), "Overlay should offer a close-tab action");
+  assert.ok(contentScript.includes("riskLockdown"), "Content script should handle a risky-page lockdown message");
+  assert.ok(messageTypes.includes("RISK_LOCKDOWN"), "Background message types should include the lockdown trigger");
+});
+
 test("optional permission helpers return the browser decision and check the current state", async () => {
   const originalChrome = globalThis.chrome;
   let requestedPermission = null;

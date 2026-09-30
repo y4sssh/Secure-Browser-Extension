@@ -61,7 +61,31 @@ async function handleMessage(message, sender) {
       let evidence = normalizeEvidence(message.payload, sender, { redirect: trackedRedirect });
       evidence = applyTrackedRedirectRisk(evidence, trackedRedirect, payloadRedirectCount);
       await savePageEvidence(evidence);
+      triggerRiskLockdownForEvidence(sender.tab?.id, evidence);
       return { ok: true, evidence };
+    }
+
+    case MESSAGE_TYPES.RISK_LOCKDOWN_ACTION: {
+      const tabId = Number(message.tabId ?? sender.tab?.id ?? 0);
+      if (!tabId || !message.action) {
+        return { ok: false, error: "Missing risk-lockdown action data" };
+      }
+
+      if (message.action === "close") {
+        await chrome.tabs.remove(tabId);
+        return { ok: true, closed: true };
+      }
+
+      if (message.action === "continue") {
+        try {
+          sessionStorage.setItem("secureBrowser.riskLockdownAllowed", "true");
+        } catch {
+          // Ignore storage failures; the page overlay is still removed locally.
+        }
+        return { ok: true, continued: true };
+      }
+
+      return { ok: false, error: `Unknown risk-lockdown action: ${message.action}` };
     }
 
     case MESSAGE_TYPES.GET_LATEST_EVIDENCE: {
@@ -259,4 +283,36 @@ function requestPageScan(tabId) {
   chrome.tabs.sendMessage(tabId, { type: MESSAGE_TYPES.REQUEST_PAGE_SCAN }, () => {
     void chrome.runtime.lastError;
   });
+}
+
+function triggerRiskLockdownForEvidence(tabId, evidence) {
+  if (!tabId) {
+    return;
+  }
+
+  const verdict = String(evidence?.verdict ?? "").toLowerCase();
+  const finalTrustScore = Number.isFinite(evidence?.scores?.finalTrustScore)
+    ? Number(evidence.scores.finalTrustScore)
+    : 100;
+
+  if (!(["risky", "high_risk"].includes(verdict) || finalTrustScore <= 40)) {
+    return;
+  }
+
+  chrome.tabs.sendMessage(
+    tabId,
+    {
+      type: MESSAGE_TYPES.RISK_LOCKDOWN_SHOW,
+      payload: {
+        tabId,
+        verdict,
+        hostname: evidence?.hostname || evidence?.pageUrl || "this page",
+        reasons: Array.isArray(evidence?.reasons) ? evidence.reasons.slice(0, 4) : [],
+        score: finalTrustScore,
+      },
+    },
+    () => {
+      void chrome.runtime.lastError;
+    },
+  );
 }
