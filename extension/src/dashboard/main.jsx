@@ -130,6 +130,20 @@ function DashboardApp() {
 
   const latest = evidence[0] ?? null;
   const score = getPrimaryScore(latest);
+  const trendSeries = useMemo(() => {
+    const items = Array.isArray(evidence) ? evidence.slice(0, 12) : [];
+    if (items.length === 0) {
+      return Array.from({ length: 8 }, (_, index) => 72 - index * 6 + (index % 3) * 4);
+    }
+
+    return items
+      .map((item) => {
+        const itemScore = getPrimaryScore(item);
+        return Math.max(0, Math.min(100, 100 - itemScore));
+      })
+      .reverse();
+  }, [evidence]);
+
   const counts = useMemo(
     () => ({
       total: evidence.length,
@@ -139,93 +153,160 @@ function DashboardApp() {
     [evidence],
   );
 
+  const riskLevelClass = latest ? `severity-${getTrustLabel(score).toLowerCase().replace(/\s+/g, "-")}` : "severity-idle";
+
+  const navItems = ["Overview", "Threats", "Evidence", "Privacy"];
+
   return (
     <main className="dashboard-shell">
-      <header className="dashboard-header">
-        <div className="brand-lockup">
-          <ShieldCheck size={24} aria-hidden="true" />
-          <div>
-            <h1>Secure Browser Dashboard</h1>
-            <p>Recent page evidence</p>
+      <div className="security-shell">
+        <aside className="security-sidebar" aria-label="Security navigation">
+          <div className="sidebar-brand">
+            <div className="brand-mark">
+              <ShieldCheck size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <strong>Secure Browser</strong>
+              <span>Threat Center</span>
+            </div>
           </div>
-        </div>
-        <button className="button-primary" type="button" onClick={refreshAll}>
-          <RefreshCw size={17} aria-hidden="true" />
-          Refresh
-        </button>
-      </header>
 
-      {latest ? (
-        <section className="dashboard-overview">
-          <TrustMeter score={score} />
-          <dl className="summary-strip">
-            <div>
-              <dt>Stored scans</dt>
-              <dd>{counts.total}</dd>
+          <nav className="sidebar-nav" aria-label="Main navigation">
+            {navItems.map((item, index) => (
+              <button key={item} className={`nav-button${index === 0 ? " active" : ""}`} type="button">
+                {item}
+              </button>
+            ))}
+          </nav>
+
+          <div className="sidebar-card">
+            <span className="eyebrow">Current status</span>
+            <strong>{latest ? getTrustLabel(score) : "No scan"}</strong>
+            <small>{latest ? `${score}/100 trust score` : "Awaiting data"}</small>
+          </div>
+        </aside>
+
+        <section className="main-panel">
+          <header className="dashboard-header">
+            <div className="brand-lockup">
+              <ShieldCheck size={24} aria-hidden="true" />
+              <div>
+                <h1>Security dashboard</h1>
+                <p>Recent page evidence</p>
+              </div>
             </div>
-            <div>
-              <dt>Caution</dt>
-              <dd>{counts.caution}</dd>
-            </div>
-            <div>
-              <dt>Risky</dt>
-              <dd>{counts.risky}</dd>
-            </div>
-          </dl>
-        </section>
-      ) : null}
+            <button className="button-primary" type="button" onClick={refreshAll}>
+              <RefreshCw size={17} aria-hidden="true" />
+              Refresh
+            </button>
+          </header>
 
-      {loading ? <div className="empty-state">Loading evidence</div> : null}
-      {status ? <p className="status-line">{status}</p> : null}
-
-      {latest ? <AlertBanner score={score} verdict={latest.verdict} reasons={latest.reasons} /> : null}
-      <ScanSummaryPanel
-        downloadScans={downloadScans}
-        cookieScans={cookieScans}
-        extensionScans={extensionScans}
-        passwordScans={passwordScans}
-        onCookieScan={handleCookieScan}
-        onExtensionScan={handleExtensionScan}
-      />
-      <CookieHealthPanel cookieScans={cookieScans} />
-      <ExtensionHealthPanel extensionScans={extensionScans} />
-      <ExposureMap extensionScans={extensionScans} />
-      <WeeklyReportPanel report={weeklyReport} />
-      <ChatBotPanel latestEvidence={latest} onAsk={handleChatAsk} />
-      <PrivacyNotice />
-      <ConsentPanel />
-
-      {!loading && evidence.length === 0 ? (
-        <div className="empty-state">No page evidence stored</div>
-      ) : (
-        <section className="evidence-list" aria-label="Recent page evidence">
-          {evidence.map((item) => {
-            const itemScore = getPrimaryScore(item);
-
-            return (
-              <article className="evidence-card" key={item.id}>
-                <div className="evidence-card-header">
-                  <div>
-                    <h2>{item.hostname || "Unknown page"}</h2>
-                    <p>{item.url}</p>
-                  </div>
-                  <span className={`score-pill score-${getTrustLabel(itemScore).toLowerCase().replace(" ", "-")}`}>
-                    {itemScore} {getTrustLabel(itemScore)}
-                  </span>
+          {latest ? (
+            <section className="dashboard-overview">
+              <TrustMeter score={score} />
+              <dl className="summary-strip">
+                <div>
+                  <dt>Stored scans</dt>
+                  <dd>{counts.total}</dd>
                 </div>
-                <SignalGrid evidence={item} />
-                <BrandGuardSummary evidence={item} />
-                <EvidenceReasons reasons={item.reasons} />
-                <FormGuardTimeline timeline={item.formGuard?.timeline ?? item.timeline} />
-                <div className="meta-row">
-                  <span>{formatTimestamp(item.timestamp)}</span>
-                  <span>{item.trigger}</span>
+                <div>
+                  <dt>Caution</dt>
+                  <dd>{counts.caution}</dd>
                 </div>
-              </article>
-            );
-          })}
+                <div>
+                  <dt>Risky</dt>
+                  <dd>{counts.risky}</dd>
+                </div>
+              </dl>
+            </section>
+          ) : null}
+
+          <section className="analytics-panel" aria-label="Threat trend overview">
+            <div className="analytics-header">
+              <div>
+                <span className="eyebrow">Threat trend</span>
+                <strong>Live risk signal</strong>
+              </div>
+              <span className="status-live">Live</span>
+            </div>
+            <div className="sparkline" aria-hidden="true">
+              {trendSeries.map((value, index) => (
+                <span
+                  key={`${value}-${index}`}
+                  className="spark-bar"
+                  style={{ height: `${Math.max(18, value)}%`, animationDelay: `${index * 80}ms` }}
+                />
+              ))}
+            </div>
+            <div className="trend-metrics">
+              <div className="metric-mini">
+                <span>Current</span>
+                <strong>{Math.round(100 - score)}%</strong>
+              </div>
+              <div className="metric-mini">
+                <span>Risk pulse</span>
+                <strong>{Math.max(1, Math.round((trendSeries.at(-1) ?? 45) / 5) * 5)}%</strong>
+              </div>
+              <div className={`metric-mini ${riskLevelClass}`}>
+                <span>Threat state</span>
+                <strong>{latest ? getTrustLabel(score) : "Idle"}</strong>
+              </div>
+            </div>
+          </section>
+
+          {loading ? <div className="empty-state">Loading evidence</div> : null}
+          {status ? <p className="status-line">{status}</p> : null}
+
+          {latest ? <AlertBanner score={score} verdict={latest.verdict} reasons={latest.reasons} /> : null}
+          <ScanSummaryPanel
+            downloadScans={downloadScans}
+            cookieScans={cookieScans}
+            extensionScans={extensionScans}
+            passwordScans={passwordScans}
+            onCookieScan={handleCookieScan}
+            onExtensionScan={handleExtensionScan}
+          />
+          <CookieHealthPanel cookieScans={cookieScans} />
+          <ExtensionHealthPanel extensionScans={extensionScans} />
+          <ExposureMap extensionScans={extensionScans} />
+          <WeeklyReportPanel report={weeklyReport} />
+          <ChatBotPanel latestEvidence={latest} onAsk={handleChatAsk} />
+          <PrivacyNotice />
+          <ConsentPanel />
+
+          {!loading && evidence.length === 0 ? (
+            <div className="empty-state">No page evidence stored</div>
+          ) : (
+            <section className="evidence-list" aria-label="Recent page evidence">
+              {evidence.map((item) => {
+                const itemScore = getPrimaryScore(item);
+
+                return (
+                  <article className="evidence-card" key={item.id}>
+                    <div className="evidence-card-header">
+                      <div>
+                        <h2>{item.hostname || "Unknown page"}</h2>
+                        <p>{item.url}</p>
+                      </div>
+                      <span className={`score-pill score-${getTrustLabel(itemScore).toLowerCase().replace(" ", "-")}`}>
+                        {itemScore} {getTrustLabel(itemScore)}
+                      </span>
+                    </div>
+                    <SignalGrid evidence={item} />
+                    <BrandGuardSummary evidence={item} />
+                    <EvidenceReasons reasons={item.reasons} />
+                    <FormGuardTimeline timeline={item.formGuard?.timeline ?? item.timeline} />
+                    <div className="meta-row">
+                      <span>{formatTimestamp(item.timestamp)}</span>
+                      <span>{item.trigger}</span>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          )}
         </section>
-      )}
+      </div>
     </main>
   );
 }

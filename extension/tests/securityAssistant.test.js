@@ -114,6 +114,15 @@ test("consent panel exposes a toggle for the risk lockdown overlay", async () =>
   assert.ok(consentPanel.includes("Risk lockdown overlay"), "Consent panel should label the global lockdown setting");
 });
 
+test("risk lockdown triggers before a page only reaches the highest-risk bucket", async () => {
+  const fs = await import("node:fs");
+  const routerPath = new URL("../src/background/messageRouter.js", import.meta.url);
+  const router = fs.readFileSync(routerPath, "utf8");
+
+  assert.ok(router.includes("shouldTriggerRiskLockdownForEvidence"), "Background router should gate the overlay via a dedicated helper");
+  assert.ok(router.includes("verdict === \"caution\""), "Caution-tier pages should still trigger the overlay when the score is suspicious");
+});
+
 test("extension health panel collapses repeated identical scans", async () => {
   const fs = await import("node:fs");
   const extensionHealthPath = new URL("../src/components/ExtensionHealthPanel.jsx", import.meta.url);

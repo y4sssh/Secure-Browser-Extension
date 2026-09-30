@@ -254,14 +254,17 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     }
 
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
-      chrome.storage.local.get({ secureBrowser: { consents: {} } }, (items) => {
-        const settings = items?.secureBrowser?.consents || items?.["secureBrowser.consents"] || {};
-        const enabled = settings.riskLockdownEnabled ?? items?.secureBrowser?.riskLockdownEnabled ?? true;
-        if (!enabled) {
-          return;
-        }
+      try {
+        chrome.storage.local.get({ secureBrowser: { consents: {} } }, (items) => {
+          const settings = items?.secureBrowser?.consents || items?.["secureBrowser.consents"] || {};
+          const enabled = settings.riskLockdownEnabled ?? items?.secureBrowser?.riskLockdownEnabled ?? true;
+          if (enabled) {
+            renderRiskLockdown(payload, hostname);
+          }
+        });
+      } catch {
         renderRiskLockdown(payload, hostname);
-      });
+      }
       return;
     }
 

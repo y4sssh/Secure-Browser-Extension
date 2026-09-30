@@ -285,8 +285,25 @@ function requestPageScan(tabId) {
   });
 }
 
+function shouldTriggerRiskLockdownForEvidence(evidence = {}) {
+  const verdict = String(evidence?.verdict ?? "").toLowerCase();
+  const finalTrustScore = Number.isFinite(evidence?.scores?.finalTrustScore)
+    ? Number(evidence.scores.finalTrustScore)
+    : 100;
+
+  if (["risky", "high_risk"].includes(verdict)) {
+    return true;
+  }
+
+  if (verdict === "caution") {
+    return finalTrustScore <= 60;
+  }
+
+  return finalTrustScore <= 55;
+}
+
 function triggerRiskLockdownForEvidence(tabId, evidence) {
-  if (!tabId) {
+  if (!tabId || !shouldTriggerRiskLockdownForEvidence(evidence)) {
     return;
   }
 
@@ -294,10 +311,6 @@ function triggerRiskLockdownForEvidence(tabId, evidence) {
   const finalTrustScore = Number.isFinite(evidence?.scores?.finalTrustScore)
     ? Number(evidence.scores.finalTrustScore)
     : 100;
-
-  if (!(["risky", "high_risk"].includes(verdict) || finalTrustScore <= 40)) {
-    return;
-  }
 
   chrome.tabs.sendMessage(
     tabId,
