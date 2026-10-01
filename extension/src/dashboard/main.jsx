@@ -186,8 +186,14 @@ function DashboardApp() {
             <span className="eyebrow">Threat trend</span>
             <strong>Live risk signal</strong>
           </div>
-          <span className="status-live">Live</span>
+          <div className="analytics-header-meta">
+            <span className="status-live">Live</span>
+            <span className="signal-timestamp">
+              {latest ? `Updated ${formatTimestamp(latest.timestamp)}` : "Awaiting signal"}
+            </span>
+          </div>
         </div>
+
         <div className="sparkline" aria-hidden="true">
           {trendSeries.map((value, index) => (
             <span
@@ -197,9 +203,10 @@ function DashboardApp() {
             />
           ))}
         </div>
+
         <div className="trend-metrics">
           <div className="metric-mini">
-            <span>Current</span>
+            <span>Threat score</span>
             <strong>{Math.round(100 - score)}%</strong>
           </div>
           <div className="metric-mini">
@@ -209,6 +216,29 @@ function DashboardApp() {
           <div className={`metric-mini ${riskLevelClass}`}>
             <span>Threat state</span>
             <strong>{latest ? getTrustLabel(score) : "Idle"}</strong>
+          </div>
+        </div>
+
+        <div className="analytics-details">
+          <div className="detail-item">
+            <span className="detail-label">Detection confidence</span>
+            <strong>{Math.min(99, 72 + (latest?.reasons?.length ?? 0) * 6)}%</strong>
+            <small>{latest?.reasons?.length ?? 0} active signals</small>
+          </div>
+          <div className="detail-item">
+            <span className="detail-label">Exposure count</span>
+            <strong>{counts.risky}</strong>
+            <small>High-risk events</small>
+          </div>
+          <div className="detail-item">
+            <span className="detail-label">Scan coverage</span>
+            <strong>{counts.total}</strong>
+            <small>Tracked observations</small>
+          </div>
+          <div className="detail-item">
+            <span className="detail-label">Caution level</span>
+            <strong>{counts.caution}</strong>
+            <small>Needs review</small>
           </div>
         </div>
       </section>

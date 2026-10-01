@@ -827,6 +827,14 @@ h1 {
   gap: 12px;
 }
 
+.analytics-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .eyebrow {
   display: block;
   color: var(--muted);
@@ -839,6 +847,13 @@ h1 {
 .analytics-header strong {
   font-size: 18px;
   letter-spacing: -0.03em;
+}
+
+.signal-timestamp {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .status-live {
@@ -917,6 +932,38 @@ h1 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.analytics-details {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(12, 17, 27, 0.92), rgba(18, 26, 37, 0.9));
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.detail-label {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.detail-item strong {
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
+.detail-item small {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .metric-mini {
