@@ -104,11 +104,13 @@ test("PrivacyNotice component documents all privacy rules", async () => {
   assert.ok(content.includes("optional permission"), "Should mention optional permissions");
 });
 
-test("ConsentPanel component exists with required consents", async () => {
+test("ConsentPanel groups core privacy and advanced protection settings", async () => {
   const fs = await import("node:fs");
   const path = join(__dirname, "..", "src", "components", "ConsentPanel.jsx");
   const content = fs.readFileSync(path, "utf8");
 
+  assert.ok(content.includes("Core privacy"), "Should define the core privacy section");
+  assert.ok(content.includes("Advanced protection"), "Should define the advanced protection section");
   assert.ok(content.includes("cloudAiConsent"), "Should have cloud AI consent toggle");
   assert.ok(content.includes("hibpConsent"), "Should have HIBP consent toggle");
   assert.ok(content.includes("reputationLookupConsent"), "Should have reputation lookup consent toggle");
