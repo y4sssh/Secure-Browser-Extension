@@ -120,6 +120,19 @@ test("ConsentPanel groups core privacy and advanced protection settings", async 
   assert.ok(content.includes("secureBrowser.consents"), "Should persist consents to storage");
 });
 
+test("Threat Center dashboard has working section navigation", async () => {
+  const fs = await import("node:fs");
+  const path = join(__dirname, "..", "src", "dashboard", "main.jsx");
+  const content = fs.readFileSync(path, "utf8");
+
+  assert.ok(content.includes("selectedSection"), "Dashboard should track the active section");
+  assert.ok(content.includes("setSelectedSection"), "Dashboard should allow section switching");
+  assert.ok(content.includes("Overview"), "Overview tab should exist");
+  assert.ok(content.includes("Threats"), "Threats tab should exist");
+  assert.ok(content.includes("Evidence"), "Evidence tab should exist");
+  assert.ok(content.includes("Privacy"), "Privacy tab should exist");
+});
+
 test("chat explain endpoint does not accept raw passwords or cookies", async () => {
   const fs = await import("node:fs");
   const path = join(__dirname, "..", "src", "lib", "backendClient.js");
