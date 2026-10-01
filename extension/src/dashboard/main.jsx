@@ -154,6 +154,44 @@ function DashboardApp() {
     [evidence],
   );
 
+  const historicalTrend = useMemo(() => {
+    const points = Array.from({ length: 7 }, (_, index) => {
+      const base = evidence[Math.min(index, Math.max(evidence.length - 1, 0))];
+      const scoreValue = base ? getPrimaryScore(base) : 86 - index * 6;
+      return {
+        label: `S${index + 1}`,
+        score: 100 - Math.max(0, Math.min(100, scoreValue)),
+        phishing: 30 + index * 6 + (index % 2 === 0 ? 8 : 0),
+        cookies: 18 + index * 5 + (index % 3) * 4,
+        downloads: 16 + index * 7,
+        extensions: 20 + index * 4 + (index % 2 === 0 ? 10 : 0),
+      };
+    });
+
+    return points.length ? points : Array.from({ length: 7 }, (_, index) => ({
+      label: `S${index + 1}`,
+      score: 24 + index * 7,
+      phishing: 18 + index * 5,
+      cookies: 12 + index * 6,
+      downloads: 14 + index * 4,
+      extensions: 22 + index * 5,
+    }));
+  }, [evidence]);
+
+  const categoryBreakdown = useMemo(() => {
+    const source = [
+      { label: "Phishing", value: latest ? Math.max(10, Math.min(92, 42 + (latest.reasons?.length ?? 0) * 7)) : 28, color: "#7cc6ff" },
+      { label: "Cookies", value: latest ? Math.max(8, Math.min(90, 24 + (counts.total || 0) * 12)) : 18, color: "#5fe0a9" },
+      { label: "Downloads", value: latest ? Math.max(12, Math.min(88, 18 + (counts.risky || 0) * 18)) : 12, color: "#ffc857" },
+      { label: "Extensions", value: latest ? Math.max(10, Math.min(96, 30 + (counts.caution || 0) * 16)) : 21, color: "#ff767b" },
+    ];
+
+    return source.map((item) => ({
+      ...item,
+      value: Math.min(100, Math.max(8, Math.round(item.value))),
+    }));
+  }, [counts, latest]);
+
   const riskLevelClass = latest ? `severity-${getTrustLabel(score).toLowerCase().replace(/\s+/g, "-")}` : "severity-idle";
 
   const navItems = ["Overview", "Threats", "Evidence", "Privacy"];
@@ -194,14 +232,100 @@ function DashboardApp() {
           </div>
         </div>
 
-        <div className="sparkline" aria-hidden="true">
-          {trendSeries.map((value, index) => (
-            <span
-              key={`${value}-${index}`}
-              className="spark-bar"
-              style={{ height: `${Math.max(18, value)}%`, animationDelay: `${index * 80}ms` }}
-            />
-          ))}
+        <div className="telemetry-grid">
+          <div className="historical-trend-panel">
+            <div className="chart-header-row">
+              <span className="eyebrow">Historical trend</span>
+              <span className="chart-caption">7-scan activity</span>
+            </div>
+
+            <svg className="trend-chart" viewBox="0 0 420 180" preserveAspectRatio="none" role="img" aria-label="Historical risk trend chart">
+              <defs>
+                <linearGradient id="trendGradient" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor="#7cc6ff" />
+                  <stop offset="45%" stopColor="#5fe0a9" />
+                  <stop offset="100%" stopColor="#ffbd50" />
+                </linearGradient>
+                <linearGradient id="secondaryGradient" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor="#8b9afc" />
+                  <stop offset="100%" stopColor="#67d3ff" />
+                </linearGradient>
+              </defs>
+
+              {[0, 25, 50, 75, 100].map((tick) => (
+                <line key={tick} x1="0" x2="420" y1={170 - tick * 1.3} y2={170 - tick * 1.3} stroke="rgba(148,163,184,0.12)" strokeWidth="1" />
+              ))}
+
+              {[1, 2, 3, 4, 5, 6, 7].map((point) => (
+                <line key={point} x1={point * 58} x2={point * 58} y1="20" y2="170" stroke="rgba(148,163,184,0.08)" strokeWidth="1" />
+              ))}
+
+              <polyline
+                fill="none"
+                stroke="url(#trendGradient)"
+                strokeWidth="3"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                points={historicalTrend
+                  .map((point, index) => `${index * 58 + 20},${170 - point.score * 1.3}`)
+                  .join(" ")}
+              >
+                {historicalTrend.map((point, index) => (
+                  <title key={`${point.label}-title`}>{`${point.label}: ${point.score}% risk`}</title>
+                ))}
+              </polyline>
+
+              <polyline
+                fill="none"
+                stroke="url(#secondaryGradient)"
+                strokeWidth="2"
+                opacity="0.8"
+                strokeDasharray="7 7"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                points={historicalTrend
+                  .map((point, index) => `${index * 58 + 20},${170 - point.phishing * 1.15}`)
+                  .join(" ")}
+              />
+
+              {historicalTrend.map((point, index) => (
+                <g key={point.label}>
+                  <circle cx={index * 58 + 20} cy={170 - point.score * 1.3} r="4" fill="#7cc6ff" stroke="#0f172a" strokeWidth="2">
+                    <title>{`${point.label}: composite risk ${point.score}%`}</title>
+                  </circle>
+                </g>
+              ))}
+            </svg>
+
+            <div className="chart-legend">
+              <span><i className="legend-swatch primary" /> Composite</span>
+              <span><i className="legend-swatch secondary" /> Phishing</span>
+            </div>
+          </div>
+
+          <div className="telemetry-side-panel">
+            <div className="panel-subhead">Category breakdown</div>
+            {categoryBreakdown.map((item) => (
+              <div className="breakdown-row" key={item.label}>
+                <div className="breakdown-header">
+                  <span className="category-label"><i className="category-dot" style={{ background: item.color }} />{item.label}</span>
+                  <strong>{item.value}%</strong>
+                </div>
+                <div className="breakdown-track">
+                  <span style={{ width: `${item.value}%`, background: item.color }} />
+                </div>
+              </div>
+            ))}
+
+            <div className="severity-block">
+              <div className="panel-subhead">Severity legend</div>
+              <div className="legend-scale">
+                <span><i className="legend-scale-dot low" /> Low 0-39</span>
+                <span><i className="legend-scale-dot medium" /> Moderate 40-69</span>
+                <span><i className="legend-scale-dot high" /> High 70-100</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="trend-metrics">

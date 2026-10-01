@@ -133,6 +133,20 @@ test("Threat Center dashboard has working section navigation", async () => {
   assert.ok(content.includes("Privacy"), "Privacy tab should exist");
 });
 
+test("Threat Center telemetry panel includes historical trend, category breakdown, and severity legend", async () => {
+  const fs = await import("node:fs");
+  const path = join(__dirname, "..", "src", "dashboard", "main.jsx");
+  const content = fs.readFileSync(path, "utf8");
+
+  assert.ok(content.includes("Historical trend"), "Dashboard should include a historical trend label");
+  assert.ok(content.includes("Category breakdown"), "Dashboard should include a category breakdown section");
+  assert.ok(content.includes("Severity legend"), "Dashboard should include a severity legend");
+  assert.ok(content.includes("Phishing"), "Category breakdown should include phishing risk");
+  assert.ok(content.includes("Cookies"), "Category breakdown should include cookie risk");
+  assert.ok(content.includes("Downloads"), "Category breakdown should include download risk");
+  assert.ok(content.includes("Extensions"), "Category breakdown should include extension risk");
+});
+
 test("chat explain endpoint does not accept raw passwords or cookies", async () => {
   const fs = await import("node:fs");
   const path = join(__dirname, "..", "src", "lib", "backendClient.js");
