@@ -1414,6 +1414,68 @@ h1 {
   word-wrap: break-word;
 }
 
+.chatbot-message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.chatbot-message-content {
+  color: inherit;
+}
+
+.agent-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.agent-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(109, 167, 255, 0.22);
+  background: rgba(64, 136, 255, 0.08);
+  color: #dfefff;
+}
+
+.agent-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #63f1b8;
+  box-shadow: 0 0 10px rgba(99, 241, 184, 0.8);
+}
+
+.agent-status-subtext {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.agent-status-empty {
+  margin-bottom: 8px;
+}
+
+.assistant-thread-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
 .assistant-analysis-card {
   margin-top: 12px;
   padding: 12px;
@@ -1472,6 +1534,97 @@ h1 {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.assistant-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.assistant-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.assistant-action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.assistant-action-block {
+  background: rgba(255, 110, 120, 0.1);
+  border-color: rgba(255, 110, 120, 0.2);
+  color: #ffc5cb;
+}
+
+.assistant-action-review {
+  background: rgba(123, 153, 255, 0.1);
+  border-color: rgba(123, 153, 255, 0.2);
+  color: #dfe8ff;
+}
+
+.assistant-action-ignore {
+  background: rgba(161, 189, 108, 0.1);
+  border-color: rgba(161, 189, 108, 0.2);
+  color: #e0f2c0;
+}
+
+.evidence-collapsible {
+  margin-top: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  background: rgba(9, 15, 25, 0.72);
+  overflow: hidden;
+}
+
+.evidence-collapsible-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.evidence-collapsible-title {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.evidence-collapsible-body {
+  display: none;
+  padding: 0 12px 12px;
+}
+
+.evidence-collapsible.open .evidence-collapsible-body {
+  display: block;
+}
+
+.evidence-collapsible-body ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .assistant-analysis-grid {

@@ -1,5 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, Send, HelpCircle } from "lucide-react";
+import {
+  MessageCircle,
+  Send,
+  HelpCircle,
+  ShieldAlert,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Ban,
+  Search,
+  BellOff,
+} from "lucide-react";
 
 const SUGGESTED_QUESTIONS = [
   "Why is this page risky?",
@@ -10,11 +21,29 @@ const SUGGESTED_QUESTIONS = [
   "Show the recommended actions",
 ];
 
-function renderAnalysisSummary(analysis) {
+function renderAnalysisSummary(analysis, isExpanded, onToggle, onAction) {
   if (!analysis) return null;
+
+  const evidenceEntries = [
+    analysis.evidenceSummary || "Privacy-safe review of the current page risk signals.",
+    ...(analysis.categories ?? []).map((category) => `Threat cluster: ${category}`),
+    ...(analysis.recommendedActions ?? []).map((action) => `Recommended: ${action}`),
+  ];
 
   return (
     <div className="assistant-analysis-card">
+      <div className="assistant-thread-header">
+        <div className="agent-status">
+          <span className="agent-status-indicator agent-status-live">
+            <span className="agent-status-dot" aria-hidden="true" />
+            AI Analyst
+          </span>
+          <span className="agent-status-subtext">
+            {analysis.privacySafe ? "Privacy-safe" : "Live review"}
+          </span>
+        </div>
+      </div>
+
       <div className="assistant-analysis-header">
         <span className={`assistant-pill assistant-pill-${String(analysis.riskLevel || "monitoring").toLowerCase()}`}>
           Risk level: {analysis.riskLevel || "Monitoring"}
@@ -42,6 +71,35 @@ function renderAnalysisSummary(analysis) {
         </div>
       </div>
 
+      <div className="assistant-action-row">
+        <button type="button" className="assistant-action-btn assistant-action-block" onClick={() => onAction("Block page")}>
+          <Ban size={14} aria-hidden="true" />
+          Block page
+        </button>
+        <button type="button" className="assistant-action-btn assistant-action-review" onClick={() => onAction("Review extensions")}>
+          <Search size={14} aria-hidden="true" />
+          Review extensions
+        </button>
+        <button type="button" className="assistant-action-btn assistant-action-ignore" onClick={() => onAction("Ignore risk")}>
+          <BellOff size={14} aria-hidden="true" />
+          Ignore risk
+        </button>
+      </div>
+
+      <div className={`evidence-collapsible ${isExpanded ? "open" : ""}`}>
+        <button type="button" className="evidence-collapsible-toggle" onClick={onToggle} aria-expanded={isExpanded}>
+          <span className="evidence-collapsible-title">Evidence review</span>
+          {isExpanded ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
+        </button>
+        <div className="evidence-collapsible-body">
+          <ul>
+            {evidenceEntries.map((entry, index) => (
+              <li key={`${entry}-${index}`}>{entry}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
       <div className="assistant-privacy-summary">
         {analysis.privacySafe ? "Privacy-safe analysis • sensitive values are redacted." : "Risk summary generated from current evidence."}
       </div>
@@ -54,6 +112,7 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
   const [question, setQuestion] = useState("");
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedEvidence, setExpandedEvidence] = useState({});
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -63,6 +122,17 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleActionClick = (actionLabel) => {
+    setStatus(`Action queued: ${actionLabel}. Security review is ready to escalate.`);
+  };
+
+  const toggleEvidence = (index) => {
+    setExpandedEvidence((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
 
   const askQuestion = async (rawQuestion) => {
     const trimmed = String(rawQuestion ?? "").trim();
@@ -89,9 +159,9 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
         },
       ]);
       if (response?.source === "local") {
-        setStatus("Answered locally from the current scan because the optional assistant service is unavailable.");
+        setStatus("AI analyst answered locally from the current scan because the optional assistant service is unavailable.");
       } else if (analysis) {
-        setStatus("Risk analysis generated from current page evidence and privacy-safe findings.");
+        setStatus("AI analyst generated a privacy-safe risk summary from the current page evidence.");
       }
     } catch (err) {
       const errorMessage = err?.message ?? "Chatbot request failed";
@@ -127,6 +197,13 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
       <div className="chatbot-messages">
         {messages.length === 0 ? (
           <div className="chatbot-empty">
+            <div className="agent-status agent-status-empty">
+              <span className="agent-status-indicator agent-status-live">
+                <span className="agent-status-dot" aria-hidden="true" />
+                AI Analyst
+              </span>
+              <span className="agent-status-subtext">Ready</span>
+            </div>
             <HelpCircle size={32} aria-hidden="true" />
             <p>
               Ask a question about this page&apos;s risk. For example:
@@ -153,8 +230,21 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
                 className={`chatbot-message chatbot-message-${message.role}`}
               >
                 <div className="chatbot-message-bubble">
-                  {message.content}
-                  {message.role === "assistant" && renderAnalysisSummary(message.analysis)}
+                  {message.role === "assistant" ? (
+                    <>
+                      <div className="chatbot-message-meta">
+                        <span className="agent-status-indicator agent-status-live">
+                          <span className="agent-status-dot" aria-hidden="true" />
+                          Security analyst
+                        </span>
+                        <span className="agent-status-subtext">{message.analysis?.privacySafe ? "Privacy-safe" : "Reviewing"}</span>
+                      </div>
+                      <div className="chatbot-message-content">{message.content}</div>
+                      {renderAnalysisSummary(message.analysis, !!expandedEvidence[index], () => toggleEvidence(index), handleActionClick)}
+                    </>
+                  ) : (
+                    <div className="chatbot-message-content">{message.content}</div>
+                  )}
                 </div>
               </div>
             ))}
