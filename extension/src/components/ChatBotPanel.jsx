@@ -6,7 +6,48 @@ const SUGGESTED_QUESTIONS = [
   "Is this page safe?",
   "What should I do?",
   "Explain the domain risk",
+  "Which threat categories are involved?",
+  "Show the recommended actions",
 ];
+
+function renderAnalysisSummary(analysis) {
+  if (!analysis) return null;
+
+  return (
+    <div className="assistant-analysis-card">
+      <div className="assistant-analysis-header">
+        <span className={`assistant-pill assistant-pill-${String(analysis.riskLevel || "monitoring").toLowerCase()}`}>
+          Risk level: {analysis.riskLevel || "Monitoring"}
+        </span>
+        <span className="assistant-confidence">Confidence {analysis.confidence ?? 0}%</span>
+      </div>
+
+      <div className="assistant-analysis-grid">
+        <div className="assistant-analysis-block">
+          <h4>Threat categories</h4>
+          <ul>
+            {(analysis.categories ?? []).map((category) => (
+              <li key={category}>{category}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="assistant-analysis-block">
+          <h4>Recommended actions</h4>
+          <ul>
+            {(analysis.recommendedActions ?? []).map((action) => (
+              <li key={action}>{action}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="assistant-privacy-summary">
+        {analysis.privacySafe ? "Privacy-safe analysis • sensitive values are redacted." : "Risk summary generated from current evidence."}
+      </div>
+    </div>
+  );
+}
 
 export function ChatBotPanel({ latestEvidence, onAsk }) {
   const [messages, setMessages] = useState([]);
@@ -38,9 +79,19 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
     try {
       const response = await onAsk(trimmed, latestEvidence);
       const answer = response?.answer ?? "No answer returned.";
-      setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+      const analysis = response?.analysis ?? null;
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: answer,
+          analysis,
+        },
+      ]);
       if (response?.source === "local") {
         setStatus("Answered locally from the current scan because the optional assistant service is unavailable.");
+      } else if (analysis) {
+        setStatus("Risk analysis generated from current page evidence and privacy-safe findings.");
       }
     } catch (err) {
       const errorMessage = err?.message ?? "Chatbot request failed";
@@ -103,6 +154,7 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
               >
                 <div className="chatbot-message-bubble">
                   {message.content}
+                  {message.role === "assistant" && renderAnalysisSummary(message.analysis)}
                 </div>
               </div>
             ))}

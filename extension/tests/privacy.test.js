@@ -147,6 +147,18 @@ test("Threat Center telemetry panel includes historical trend, category breakdow
   assert.ok(content.includes("Extensions"), "Category breakdown should include extension risk");
 });
 
+test("security assistant exposes advanced workflow with categories, confidence, and recommended actions", async () => {
+  const fs = await import("node:fs");
+  const path = join(__dirname, "..", "src", "lib", "securityAssistant.js");
+  const content = fs.readFileSync(path, "utf8");
+
+  assert.ok(content.includes("Recommended actions"), "Assistant should provide structured recommended actions");
+  assert.ok(content.includes("Threat categories"), "Assistant should classify threat categories");
+  assert.ok(content.includes("Confidence"), "Assistant should show confidence level");
+  assert.ok(content.includes("Risk level"), "Assistant should show a risk level summary");
+  assert.ok(content.includes("Privacy-safe"), "Assistant should reflect privacy-safe behavior");
+});
+
 test("chat explain endpoint does not accept raw passwords or cookies", async () => {
   const fs = await import("node:fs");
   const path = join(__dirname, "..", "src", "lib", "backendClient.js");

@@ -1,17 +1,46 @@
 import { fetchChatExplain } from "./backendClient.js";
 import { prepareAssistantEvidence as prepareSafeEvidence } from "./assistantEvidence.js";
 
-export function prepareAssistantEvidence(evidence = {}) {
-  return prepareSafeEvidence(evidence);
+function getRiskLevel(verdict) {
+  switch (verdict) {
+    case "high_risk":
+      return "High";
+    case "risky":
+      return "High";
+    case "caution":
+      return "Moderate";
+    case "trusted":
+      return "Low";
+    default:
+      return "Monitoring";
+  }
 }
 
-export function explainSecurityRiskLocally(question, evidence = {}) {
+function summarizeCategories(reasons = [], evidence = {}) {
+  const categories = new Set();
+  const text = reasons.join(" ").toLowerCase();
+
+  if (/phish|brand|login|domain mismatch|spoof|impersonat/i.test(text)) categories.add("Phishing");
+  if (/cookie|tracking|session|storage/i.test(text)) categories.add("Cookies");
+  if (/download|file|malware|binary/i.test(text)) categories.add("Downloads");
+  if (/extension|permission|sideload|management/i.test(text)) categories.add("Extensions");
+  if (/form|password|credential/i.test(text)) categories.add("Form abuse");
+  if (!categories.size) {
+    categories.add("General website risk");
+  }
+
+  if (evidence?.signals?.hasPasswordField || evidence?.signals?.delayedPasswordField) {
+    categories.add("Credential exposure");
+  }
+
+  return Array.from(categories).slice(0, 4);
+}
+
+function buildAdvancedAssessment(question, evidence = {}) {
   const prepared = prepareAssistantEvidence(evidence);
   const hostname = prepared.hostname || "this page";
   const verdict = prepared.verdict || "unknown";
-  const reasons = prepared.reasons?.length
-    ? prepared.reasons
-    : ["Suspicious security signals were detected."];
+  const reasons = prepared.reasons?.length ? prepared.reasons : ["Suspicious security signals were detected."];
   const primaryReason = reasons[0];
   const branded = Array.isArray(prepared.claimedBrands) && prepared.claimedBrands.length > 0
     ? prepared.claimedBrands.join(", ")
@@ -20,6 +49,15 @@ export function explainSecurityRiskLocally(question, evidence = {}) {
   const hasDirectRisk = /cross|domain mismatch|login|form|password|download|cookie|extension|malware|phish|brand/i.test(
     reasons.join(" "),
   );
+  const riskLevel = getRiskLevel(verdict);
+  const confidence = Math.min(98, Math.max(52, 68 + (reasons.length * 6) + (hasDirectRisk ? 8 : 0)));
+  const categories = summarizeCategories(reasons, evidence);
+  const recommendedActions = [
+    "Do not enter credentials on this page until the domain is verified.",
+    "Close the tab or use the browser safety prompt if the page appears deceptive.",
+    "Review browser extensions and cookie permissions before continuing.",
+  ];
+
   const generalRiskContext = `This page does not currently show a strong direct phishing or form-abuse signal, but websites can still be risky through fake login pages, brand impersonation, unsafe cookies, malicious downloads, password reuse, or over-permissioned browser extensions.`;
 
   let answer;
@@ -32,7 +70,7 @@ export function explainSecurityRiskLocally(question, evidence = {}) {
     }
   } else if (/(is this safe|safe\?)/.test(normalizedQuestion)) {
     if (verdict === "trusted" || !hasDirectRisk) {
-      answer = `${generalRiskContext} A page may still be safe today but still expose risk through phishing tricks, tracking, unsafe cookies, or malicious downloads. For ${hostname}, check the domain, confirm the site is expected, and never enter credentials on a page reached from a suspicious link.`;
+      answer = `${generalRiskContext} A page may still be safe today but expose risk through phishing tricks, tracking, unsafe cookies, or malicious downloads. For ${hostname}, check the domain, confirm the site is expected, and never enter credentials on a page reached from a suspicious link.`;
     } else {
       answer = `This page is not considered safe. It is flagged as ${verdict} because: ${primaryReason} Do not enter sensitive information here.`;
     }
@@ -62,9 +100,35 @@ export function explainSecurityRiskLocally(question, evidence = {}) {
   }
 
   return {
-    source: "local",
     answer: answer.trim(),
+    analysis: {
+      riskLevel,
+      confidence: Math.round(confidence),
+      categories,
+      recommendedActions,
+      labels: {
+        riskLevel: "Risk level",
+        confidence: "Confidence",
+        categories: "Threat categories",
+        actions: "Recommended actions",
+        privacySafe: "Privacy-safe",
+      },
+      evidenceSummary: `Privacy-safe analysis for ${hostname}. Sensitive values are redacted and no raw credentials or cookies are exposed.`,
+      privacySafe: true,
+    },
     evidence: prepared,
+  };
+}
+
+export function prepareAssistantEvidence(evidence = {}) {
+  return prepareSafeEvidence(evidence);
+}
+
+export function explainSecurityRiskLocally(question, evidence = {}) {
+  const assessment = buildAdvancedAssessment(question, evidence);
+  return {
+    source: "local",
+    ...assessment,
   };
 }
 
@@ -72,7 +136,13 @@ export async function askSecurityAssistant(question, evidence = {}) {
   try {
     const response = await fetchChatExplain(question, evidence);
     if (response?.answer) {
-      return { ...response, source: "backend" };
+      const baseAssessment = buildAdvancedAssessment(question, evidence);
+      return {
+        ...response,
+        source: "backend",
+        analysis: response.analysis ?? baseAssessment.analysis,
+        answer: response.answer || baseAssessment.answer,
+      };
     }
   } catch {
     // Fall back to the local rule-based explanation when the optional backend
