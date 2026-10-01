@@ -8,13 +8,25 @@ export function normalizeConsentSettings(raw = {}) {
   return {
     cloudAi: Boolean(flat.cloudAi ?? nested.cloudAi ?? legacy.cloudAi ?? false),
     hibp: Boolean(flat.hibp ?? nested.hibp ?? legacy.hibp ?? false),
+    reputationLookup: Boolean(flat.reputationLookup ?? nested.reputationLookup ?? legacy.reputationLookup ?? false),
+    downloadScan: Boolean(flat.downloadScan ?? nested.downloadScan ?? legacy.downloadScan ?? false),
+    cookieAudit: Boolean(flat.cookieAudit ?? nested.cookieAudit ?? legacy.cookieAudit ?? false),
+    extensionAudit: Boolean(flat.extensionAudit ?? nested.extensionAudit ?? legacy.extensionAudit ?? false),
     riskLockdownEnabled: Boolean(flat.riskLockdownEnabled ?? nested.riskLockdownEnabled ?? legacy.riskLockdownEnabled ?? true),
   };
 }
 
 export async function getConsentSettings() {
   if (typeof chrome === "undefined" || !chrome?.storage?.local) {
-    return { cloudAi: true, hibp: true, riskLockdownEnabled: true };
+    return {
+      cloudAi: true,
+      hibp: true,
+      reputationLookup: false,
+      downloadScan: false,
+      cookieAudit: false,
+      extensionAudit: false,
+      riskLockdownEnabled: true,
+    };
   }
 
   const items = await new Promise((resolve) => {
@@ -26,7 +38,16 @@ export async function getConsentSettings() {
 
 export async function setConsentSettings(nextValues = {}) {
   if (typeof chrome === "undefined" || !chrome?.storage?.local) {
-    return { cloudAi: true, hibp: true, riskLockdownEnabled: true, ...nextValues };
+    return {
+      cloudAi: true,
+      hibp: true,
+      reputationLookup: false,
+      downloadScan: false,
+      cookieAudit: false,
+      extensionAudit: false,
+      riskLockdownEnabled: true,
+      ...nextValues,
+    };
   }
 
   const items = await new Promise((resolve) => {
@@ -39,17 +60,29 @@ export async function setConsentSettings(nextValues = {}) {
     ...(items?.[CONSENT_STORAGE_KEY] || {}),
     cloudAi: merged.cloudAi,
     hibp: merged.hibp,
+    reputationLookup: merged.reputationLookup,
+    downloadScan: merged.downloadScan,
+    cookieAudit: merged.cookieAudit,
+    extensionAudit: merged.extensionAudit,
     riskLockdownEnabled: merged.riskLockdownEnabled,
   };
   const secureBrowser = {
     ...(items?.secureBrowser || {}),
     cloudAi: merged.cloudAi,
     hibp: merged.hibp,
+    reputationLookup: merged.reputationLookup,
+    downloadScan: merged.downloadScan,
+    cookieAudit: merged.cookieAudit,
+    extensionAudit: merged.extensionAudit,
     riskLockdownEnabled: merged.riskLockdownEnabled,
     consents: {
       ...((items?.secureBrowser && items.secureBrowser.consents) || {}),
       cloudAi: merged.cloudAi,
       hibp: merged.hibp,
+      reputationLookup: merged.reputationLookup,
+      downloadScan: merged.downloadScan,
+      cookieAudit: merged.cookieAudit,
+      extensionAudit: merged.extensionAudit,
       riskLockdownEnabled: merged.riskLockdownEnabled,
     },
   };

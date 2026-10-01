@@ -111,6 +111,10 @@ test("ConsentPanel component exists with required consents", async () => {
 
   assert.ok(content.includes("cloudAiConsent"), "Should have cloud AI consent toggle");
   assert.ok(content.includes("hibpConsent"), "Should have HIBP consent toggle");
+  assert.ok(content.includes("reputationLookupConsent"), "Should have reputation lookup consent toggle");
+  assert.ok(content.includes("downloadScanConsent"), "Should have download scan consent toggle");
+  assert.ok(content.includes("cookieAuditConsent"), "Should have cookie audit consent toggle");
+  assert.ok(content.includes("extensionAuditConsent"), "Should have extension audit consent toggle");
   assert.ok(content.includes("secureBrowser.consents"), "Should persist consents to storage");
 });
 
