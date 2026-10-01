@@ -1,38 +1,40 @@
-# Secure Browser Extension
+ # Secure Browser Extension
 
 ![CI](https://img.shields.io/badge/ci-pending-lightgrey) ![license-MIT](https://img.shields.io/badge/license-MIT-blue) ![python-3.11](https://img.shields.io/badge/python-3.11+-blue) ![node-20](https://img.shields.io/badge/node-20+-green)
 
-A privacy-first Chrome extension prototype with a companion FastAPI backend for detecting credential phishing, brand impersonation, and unsafe form behaviors. The project targets research, reproducible demos, and enterprise integration while preserving user privacy.
+A privacy-first Chrome extension prototype with a companion FastAPI backend for detecting credential phishing, brand impersonation, and unsafe form behaviors. This repository contains everything needed to run local demos, develop the extension, and experiment with lightweight rule-based models.
 
 Table of Contents
-- [Key features](#key-features)
-- [Quick start](#quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Run backend (local)](#run-backend-local)
-  - [Develop the extension](#develop-the-extension)
-- [Examples](#examples)
+- [Project highlights](#project-highlights)
+- [Requirements](#requirements)
+- [Installation & quick start](#installation--quick-start)
+  - [Backend (local)](#backend-local)
+  - [Extension (development & load)](#extension-development--load)
+  - [Serve demo pages](#serve-demo-pages)
+- [Usage examples (API)](#usage-examples-api)
 - [Testing](#testing)
-- [Architecture overview](#architecture-overview)
+- [Project structure](#project-structure)
 - [Contributing](#contributing)
 - [Security & privacy](#security--privacy)
+- [CI / Next steps](#ci--next-steps)
 - [License](#license)
 
-Key features
-- Privacy-preserving evidence collection and scoring with no plaintext credential storage.
-- Explainable risk scoring combining URL, form, text, visual and brand signals.
-- Lightweight FastAPI demo backend for analysis and evidence ingestion.
-- Demo pages and automated tests to reproduce scenarios locally.
+Project highlights
+- Privacy-preserving evidence collection with no plaintext credential storage.
+- Explainable risk scoring combining URL, form, text, and brand signals.
+- FastAPI demo backend for ingesting evidence and serving rule-based analyses.
+- Reproducible demo pages and tests to validate detection scenarios.
 
-Quick start
-These steps get a local development environment running for the backend and extension.
-
-Prerequisites
+Requirements
 - Python 3.11+
 - Node.js 20+ and npm 10+
-- Optional: MongoDB 6.x for persistent backend storage
+- Optional: MongoDB 6.x (for production-like backend persistence)
 
-Run backend (local)
-1. Create and activate a virtual environment, then install dependencies:
+Installation & quick start
+Follow these steps to run the backend and load the extension for local development.
+
+Backend (local)
+1. Create and activate a Python virtual environment and install dependencies:
 
 ```bash
 python -m venv .venv
@@ -40,57 +42,62 @@ source .venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
-2. Copy the example env and set any required secrets (do not commit secrets):
+2. Copy environment example and configure secrets (do not commit secrets):
 
 ```bash
 cp backend/.env.example backend/.env
-# Edit backend/.env to set API keys and configuration
+# Edit backend/.env to set any API keys or settings required for your environment
 ```
 
-3. Start the demo backend (development mode):
+3. Run the FastAPI demo backend (development):
 
 ```bash
 cd backend
+# development server (reloads on change)
 uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 ```
 
-The backend will listen at http://127.0.0.1:8000.
+The backend will be available at http://127.0.0.1:8000.
 
-Develop the extension
-1. Install UI dependencies and run the dashboard in dev mode:
+Extension (development & load)
+1. Install UI and build tooling dependencies:
 
 ```bash
 cd extension
 npm install
+```
+
+2. Run in development mode (if supported by local tooling):
+
+```bash
 npm run dev
 ```
 
-2. Build for distribution:
+3. Build a production/distributable bundle:
 
 ```bash
 npm run build
-# produced artifacts are in extension/dist
+# built artifacts are written to extension/dist
 ```
 
-3. Load the extension into Chrome (Developer mode → Load unpacked → select `extension/dist`).
+4. Load the extension into Chrome / Chromium:
 
-Testing
-- Backend unit tests (from repository root):
+Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the `extension/dist` folder.
+
+Notes for development
+- Use the extension background/service worker DevTools to inspect runtime logs and messages.
+- Rebuild the extension after code changes that affect `src/` and reload it from `chrome://extensions`.
+
+Serve demo pages
+The `test-sites/` directory contains static pages for demo and acceptance testing. Serve them on a separate port to avoid conflicts with the backend:
 
 ```bash
-PYTHONPATH=backend python -m pytest -q backend/tests
+cd test-sites
+python3 -m http.server 8001
 ```
 
-- Extension tests (run from `extension`):
-
-```bash
-cd extension
-npm test
-```
-
-Examples
-
-Quick API examples (assumes backend at `http://127.0.0.1:8000`)
+Usage examples (API)
+Assumes backend at `http://127.0.0.1:8000`.
 
 - Analyze a URL (returns risk metadata):
 
@@ -108,102 +115,65 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/evidence \
   -d '{"tabId":1, "url":"http://example.com", "evidence":{"urlRisk":0.7}}' | jq
 ```
 
-Serve demo pages locally (avoid port conflict with backend):
+Testing
+- Run backend unit tests (from repo root):
 
 ```bash
-cd test-sites
-python3 -m http.server 8001
+PYTHONPATH=backend python -m pytest -q backend/tests
 ```
 
-Architecture overview
-- `extension/` — Manifest V3 UI, content scripts, service worker, and dashboard.
-- `backend/` — FastAPI app with analysis, evidence ingestion, and demo routes.
-- `ml/` — dataset tools and model stubs for offline experiments.
-- `test-sites/` — static pages for demo and acceptance testing.
+- Run extension tests (from `extension`):
+
+```bash
+cd extension
+npm test
+```
+
+Project structure
+- `extension/` — Chrome Manifest V3 extension: content scripts, service worker, popup, and dashboard.
+- `backend/` — FastAPI demo backend with analysis, evidence ingestion, and demo endpoints.
+- `ml/` — rule-based model stubs and dataset utilities.
+- `test-sites/` — static pages for local demo and testing.
+- `docs/` — design docs, API spec, threat model, and privacy policy.
 
 See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) and [docs/API_SPEC.md](docs/API_SPEC.md) for design details and API contracts.
 
 Contributing
-- Fork, create a feature branch, run tests locally, and open a PR describing changes and rationale.
-- Keep demo artifacts and test data free of real credentials or secrets.
+- Fork the repository and create a branch named descriptively (e.g., `feat/url-score`).
+- Run the relevant tests and linters.
+- Open a PR with a clear description, testing steps, and rationale.
 
-Contributing
-
-We welcome contributions. Please follow these steps for small changes and experiments:
-
-- Fork the repository and create a descriptive branch name (e.g., `feat/url-score`).
-- Run the test suite and linters for the area you change.
-- Open a pull request with a short description, testing steps, and why the change is needed.
-
-Checklist for PRs:
-
+PR checklist
 - [ ] Tests added or updated for new behavior
 - [ ] Linting passes
 - [ ] No real credentials or secrets in the changes
 - [ ] Documentation updated where applicable
 
-If you want to contribute larger features (models, CI, or infra), open an issue first to discuss the approach.
-
 Security & privacy
-- Never log or persist raw credentials, cookies, or full user-typed values.
-- Keep backend secrets (API keys) out of client-side code and the extension bundle.
-- Telemetry is aggregated and sanitized; see [docs/PRIVACY.md](docs/PRIVACY.md) for the project privacy policy.
+- Do not log or persist raw credentials, cookies, or full user-typed values.
+- Keep backend secrets out of client-side code and the extension bundle.
+- Telemetry (if any) is aggregated and sanitized — see [docs/PRIVACY.md](docs/PRIVACY.md).
+
+CI / Next steps
+- Add GitHub Actions to run backend tests, extension tests, and linters on push.
+- Provide a one-page quickstart or cheat sheet for maintainers and demo operators.
+- Replace rule-based `ml/` stubs with trained models and add model versioning to API responses when ready.
 
 License
 This project is licensed under MIT. See [LICENSE](LICENSE) for details.
 
-Next steps
-- Add GitHub Actions CI to run backend tests, extension tests, and linters on push.
-- Optionally provide a one-page cheat sheet or short slide summarizing setup and demo instructions.
+Appendix (developer tips)
+- If you see `ModuleNotFoundError: ml` when running the backend in development, ensure the repo root is on `PYTHONPATH` or run the server from the repository root with `PYTHONPATH=backend`.
+- To avoid port conflicts, keep the backend on port `8000` and serve `test-sites/` on port `8001`.
+- When loading unpacked extension in Chrome, reload after rebuilding and check service worker logs in DevTools.
 
-If you want, I can now:
-- add CI configuration,
+If you'd like, I can:
+- add CI configuration (GitHub Actions) to run tests and linters,
 - condense this README into a one-page cheat-sheet, or
 - run the test suites and report results.
 
-  - Added the content script (`extension/src/content/contentScript.js`) to inject page scanning and listen for page lifecycle events.
-  - Added extension runtime helpers in `extension/src/lib/chrome/runtime.js` and message type constants in `extension/src/lib/chrome/messageTypes.js`.
-
-**Detailed changelog**
-- **Phase 2**: Evidence engine, risk scoring, and storage.
-**Extension (what changed and why)**
-  - Defined structured evidence normalization in `extension/src/lib/evidence/schema.js`.
-  - Implemented `extension/src/lib/storage/evidenceStorage.js` to persist recent page evidence in Chrome storage.
-  - Built scoring modules for URL risk, form risk, brand risk, and final trust scoring in `extension/src/lib/scoring/`.
-  - Added `extension/src/lib/evidence/evidenceSummary.js` for score formatting, trust labels, and dashboard display helpers.
-  - Enabled popup/dashboard retrieval of latest and recent evidence through runtime message handlers.
-
-- **Phase 3**: FormGuard and dynamic page scanning.
-**Backend (what changed and why)**
-  - Added form field and credential signal extraction in `extension/src/content/pageScanner.js`.
-  - Implemented DOM `MutationObserver` to detect injected or modified forms and rescan pages on changes.
-  - Added user interaction trigger handling and page location change detection for continuous analysis.
-  - Implemented hidden password/credential field detection, login overlay detection, and iframe login scanning.
-  - Built form timeline event generation for delayed login forms, action changes, and suspicious iframe form discovery.
-
-- **Phase 4**: Backend scaffold and evidence ingestion.
-  - Added FastAPI backend skeleton in `backend/app/main.py` with CORS enabled.
-  - Implemented health endpoint in `backend/app/api/health.py`.
-**ML & Fusion models**
-  - Added evidence ingestion route in `backend/app/api/evidence.py` with sanitized payload logging.
-  - Provided a lightweight demo server in `backend/demo_server.py` for dependency-free backend testing.
-  - Added backend tests and a `backend/requirements.txt` dependency manifest.
-
-- **Phase 5**: URL model and richer URL analysis.
-**Datasets & tooling**
-  - Added `ml/url_model_stub.py` with rule-based URL risk heuristics for length, HTTPS, subdomains, IP URLs, punycode, suspicious TLDs, redirects, and brand keywords.
-  - Updated backend URL analysis endpoint to return `urlRisk`, feature metadata, and model version.
-**Build, demo, and run notes (practical steps)**
-  - Added backend tests that validate structured URL risk responses.
-1. Start backend (from repo root or `backend/`):
-
-```bash
-cd backend
-# activate virtualenv if used
-source .venv/bin/activate
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-- **Phase 6**: Brand/Text evidence and cloud-safe backend analysis.
+---
+Updated: automated README refresh by repository assistant.
 2. Serve demo pages (test-sites) on port 8001 to avoid conflicts with backend:
   - Extended page scanning to collect sanitized text snippets from titles, headings, labels, buttons, and accessible labels.
 ```bash
