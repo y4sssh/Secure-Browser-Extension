@@ -116,6 +116,89 @@ test("assistant exposes a formal SOC brief with executive summary, impact, triag
   assert.match(result.analysis.ticketNarrative, /ticket|incident|risk/i);
 });
 
+test("assistant exposes incident-response metadata with scope, confidence, ownership, and export format", () => {
+  const result = explainSecurityRiskLocally("Create an incident report.", {
+    hostname: "checkout.bank.example.test",
+    verdict: "risky",
+    scores: { finalTrustScore: 27 },
+    reasons: [
+      "Brand impersonation in payment flow",
+      "Cookie tracking and cross-domain forms detected",
+    ],
+    signals: {
+      formPostsCrossDomain: true,
+      brandDomainMismatch: true,
+      cookieTracking: true,
+    },
+  });
+
+  assert.ok(result.analysis.scopeAndAffectedAssets);
+  assert.ok(result.analysis.evidenceConfidence != null);
+  assert.ok(result.analysis.owner);
+  assert.ok(result.analysis.nextAction);
+  assert.ok(result.analysis.ticketExport);
+  assert.match(result.analysis.scopeAndAffectedAssets, /checkout\.bank\.example\.test|browser|page/i);
+  assert.match(result.analysis.owner, /owner|analyst|user/i);
+  assert.match(result.analysis.nextAction, /close|verify|contain|block/i);
+  assert.match(result.analysis.ticketExport, /INCIDENT|severity|priority|scope/i);
+});
+
+test("assistant exposes ticketing-ready fields for owner, due date, incident ID, and closure criteria", () => {
+  const result = explainSecurityRiskLocally("Create a ticket-ready incident record.", {
+    hostname: "login.secure.example.test",
+    verdict: "high_risk",
+    scores: { finalTrustScore: 14 },
+    reasons: [
+      "Password form submits to a different domain",
+      "Page claims to be a trusted login portal",
+    ],
+    signals: {
+      formPostsCrossDomain: true,
+      loginOverlay: true,
+      brandDomainMismatch: true,
+    },
+  });
+
+  assert.ok(result.analysis.affectedAsset);
+  assert.ok(result.analysis.incidentId);
+  assert.ok(result.analysis.owner);
+  assert.ok(result.analysis.dueDate);
+  assert.ok(result.analysis.closureCriteria);
+  assert.match(result.analysis.affectedAsset, /login\.secure\.example\.test|browser session|active page/i);
+  assert.match(result.analysis.incidentId, /INC-|incident|case/i);
+  assert.match(result.analysis.owner, /owner|analyst|user/i);
+  assert.match(result.analysis.dueDate, /2026|2027|today|tomorrow|due/i);
+  assert.match(result.analysis.closureCriteria, /close|verify|domain|credential|safe/i);
+});
+
+test("assistant exposes ticketing-ready fields for affected asset, incident ID, due date, owner, and closure criteria", () => {
+  const result = explainSecurityRiskLocally("Create a ticket-ready incident record.", {
+    hostname: "login.secure.example.test",
+    verdict: "high_risk",
+    scores: { finalTrustScore: 14 },
+    reasons: [
+      "Password form submits to a different domain",
+      "Page claims to be a trusted login portal",
+    ],
+    signals: {
+      formPostsCrossDomain: true,
+      loginOverlay: true,
+      brandDomainMismatch: true,
+    },
+  });
+
+  assert.ok(result.analysis.affectedAsset);
+  assert.ok(result.analysis.incidentId);
+  assert.ok(result.analysis.owner);
+  assert.ok(result.analysis.dueDate);
+  assert.ok(result.analysis.closureCriteria);
+  assert.match(result.analysis.affectedAsset, /login\.secure\.example\.test|browser session|active page/i);
+  assert.match(result.analysis.incidentId, /INC-|incident|case/i);
+  assert.match(result.analysis.owner, /owner|analyst|user/i);
+  assert.match(result.analysis.dueDate, /2026|2027|today|tomorrow|due/i);
+  assert.match(result.analysis.closureCriteria, /close|verify|domain|credential|safe/i);
+});
+
 test("risky page lock screen is injected with explicit continue and close actions", async () => {
   const fs = await import("node:fs");
   const contentScriptPath = new URL("../src/content/contentScript.js", import.meta.url);

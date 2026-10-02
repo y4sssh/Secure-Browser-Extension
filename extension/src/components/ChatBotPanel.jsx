@@ -110,6 +110,59 @@ function renderAnalysisSummary(analysis, isExpanded, onToggle, onAction) {
         <p>{analysis.ticketNarrative || "Ticket narrative pending."}</p>
       </div>
 
+      <div className="assistant-analysis-grid">
+        <div className="assistant-analysis-block">
+          <h4>Scope and affected assets</h4>
+          <p>{analysis.scopeAndAffectedAssets || "Scope details pending."}</p>
+        </div>
+
+        <div className="assistant-analysis-block">
+          <h4>Evidence confidence</h4>
+          <p>{analysis.evidenceConfidence || "Confidence pending."}</p>
+        </div>
+      </div>
+
+      <div className="assistant-analysis-grid">
+        <div className="assistant-analysis-block">
+          <h4>Owner</h4>
+          <p>{analysis.owner || "Owner pending."}</p>
+        </div>
+
+        <div className="assistant-analysis-block">
+          <h4>Next action</h4>
+          <p>{analysis.nextAction || "Next action pending."}</p>
+        </div>
+      </div>
+
+      <div className="assistant-analysis-block">
+        <h4>Ticket export</h4>
+        <p>{analysis.ticketExport || "Ticket export pending."}</p>
+      </div>
+
+      <div className="assistant-analysis-grid">
+        <div className="assistant-analysis-block">
+          <h4>Affected asset</h4>
+          <p>{analysis.affectedAsset || "Affected asset pending."}</p>
+        </div>
+
+        <div className="assistant-analysis-block">
+          <h4>Incident ID</h4>
+          <p>{analysis.incidentId || "Incident ID pending."}</p>
+        </div>
+      </div>
+
+      <div className="assistant-analysis-grid">
+        <div className="assistant-analysis-block">
+          <h4>Due date</h4>
+          <p>{analysis.dueDate || "Due date pending."}</p>
+        </div>
+
+        <div className="assistant-analysis-block">
+          <h4>Recommended closure criteria</h4>
+          <p>{analysis.closureCriteria || "Closure criteria pending."}</p>
+        </div>
+      </div>
+
       <div className="assistant-action-row">
         <button type="button" className="assistant-action-btn assistant-action-block" onClick={() => onAction("Block page")}>
           <Ban size={14} aria-hidden="true" />

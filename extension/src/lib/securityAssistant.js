@@ -253,6 +253,65 @@ function buildTicketNarrative(hostname, verdict, severity, priority, categories)
   return `Ticket-ready narrative: An incident was opened for ${hostname} and classified as ${severity} severity with ${priority} urgency. The observed indicators align to ${categoryText} and the page was assessed as ${verdict}. The recommended response was to contain access, block credential entry, and verify the destination through an independent trusted source before allowing any user interaction.`;
 }
 
+function buildScopeAndAffectedAssets(hostname, categories) {
+  const categoryText = categories.length ? categories.join(", ") : "general website risk";
+  return `Scope and affected assets: Browser session and active page context on ${hostname}; no raw credentials, cookies, or tokens are exposed. Threat categories include ${categoryText}. Potential exposure is limited to user interaction with the current page and any data entered into deceptive forms.`;
+}
+
+function buildEvidenceConfidence(verdict, confidence) {
+  const evidenceScore = Math.min(99, Math.max(40, confidence));
+  if (verdict === "high_risk" || verdict === "risky") {
+    return `High confidence (${evidenceScore}%) based on multiple independent indicators and direct risk-signature matches.`;
+  }
+  if (verdict === "caution") {
+    return `Moderate confidence (${evidenceScore}%) based on mixed website-risk indicators that require manual verification.`;
+  }
+  return `Low to moderate confidence (${evidenceScore}%) because the page does not show a direct exploit pattern, but the overall site posture still warrants caution.`;
+}
+
+function buildOwnerMetadata() {
+  return "Owner: Analyst / Browser user; primary responsibility is to contain the session and validate the trusted destination before further interaction.";
+}
+
+function buildNextAction(verdict) {
+  if (verdict === "high_risk" || verdict === "risky") {
+    return "Next action: close the tab, block the flow, and re-open the destination through a known trusted URL before continuing.";
+  }
+  return "Next action: monitor the page, verify the legitimacy of the site, and avoid credential entry until the domain is independently confirmed.";
+}
+
+function buildTicketExport(hostname, verdict, severity, priority, confidence) {
+  return [
+    "INCIDENT REPORT",
+    `scope=${hostname}`,
+    `severity=${severity}`,
+    `priority=${priority}`,
+    `verdict=${verdict}`,
+    `confidence=${Math.round(confidence)}%`,
+    "status=investigating",
+    "recommended_action=close_tab_and_verify_domain",
+  ].join(" | ");
+}
+
+function buildAffectedAsset(hostname) {
+  return `Affected asset: active browser session on ${hostname}; the user may have been exposed to a deceptive page and could have entered credentials or other sensitive information.`;
+}
+
+function buildIncidentId(hostname) {
+  const safeId = String(hostname).replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toUpperCase();
+  return `Incident ID: INC-${safeId.slice(0, 12) || "BROWSER"}-${Date.now().toString().slice(-4)}`;
+}
+
+function buildDueDate() {
+  const now = new Date();
+  now.setDate(now.getDate() + 1);
+  return `Due date: ${now.toISOString().slice(0, 10)}`;
+}
+
+function buildClosureCriteria() {
+  return "Recommended closure criteria: the page is verified as trusted, no credentials or tokens were entered, and the user confirms the destination domain matches the real brand before resuming access.";
+}
+
 function buildAdvancedAssessment(question, evidence = {}) {
   const prepared = prepareAssistantEvidence(evidence);
   const hostname = prepared.hostname || "this page";
@@ -290,6 +349,15 @@ function buildAdvancedAssessment(question, evidence = {}) {
   const impactAssessment = buildImpactAssessment(hostname, verdict, signalProfile, dynamicCategories);
   const triageWorkflow = buildTriageWorkflow(hostname, verdict, signalProfile, recommendedActions);
   const ticketNarrative = buildTicketNarrative(hostname, verdict, severity, priority, dynamicCategories);
+  const scopeAndAffectedAssets = buildScopeAndAffectedAssets(hostname, dynamicCategories);
+  const evidenceConfidence = buildEvidenceConfidence(verdict, confidence);
+  const owner = buildOwnerMetadata();
+  const nextAction = buildNextAction(verdict);
+  const ticketExport = buildTicketExport(hostname, verdict, severity, priority, confidence);
+  const affectedAsset = buildAffectedAsset(hostname);
+  const incidentId = buildIncidentId(hostname);
+  const dueDate = buildDueDate();
+  const closureCriteria = buildClosureCriteria();
 
   const generalRiskContext = `This page is not a proof of active compromise, but it matches a risky profile with multiple security signals. The safest interpretation is to treat it as untrusted until the page has been verified through an independent, trusted route.`;
   const professionalNarrative = buildProfessionalRiskNarrative(hostname, verdict, reasons, branded, signalProfile);
@@ -351,6 +419,15 @@ function buildAdvancedAssessment(question, evidence = {}) {
       impactAssessment,
       triageWorkflow,
       ticketNarrative,
+      scopeAndAffectedAssets,
+      evidenceConfidence,
+      owner,
+      nextAction,
+      ticketExport,
+      affectedAsset,
+      incidentId,
+      dueDate,
+      closureCriteria,
       labels: {
         riskLevel: "Risk level",
         confidence: "Confidence",
@@ -363,6 +440,15 @@ function buildAdvancedAssessment(question, evidence = {}) {
         impactAssessment: "Impact assessment",
         triageWorkflow: "Triage workflow",
         ticketNarrative: "Ticket-ready narrative",
+        scopeAndAffectedAssets: "Scope and affected assets",
+        evidenceConfidence: "Evidence confidence",
+        owner: "Owner",
+        nextAction: "Next action",
+        ticketExport: "Ticket export",
+        affectedAsset: "Affected asset",
+        incidentId: "Incident ID",
+        dueDate: "Due date",
+        closureCriteria: "Recommended closure criteria",
         privacySafe: "Privacy-safe",
       },
       evidenceSummary: `Privacy-safe analysis for ${hostname}. Sensitive values are redacted and no raw credentials or cookies are exposed.`,
