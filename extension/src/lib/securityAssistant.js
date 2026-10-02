@@ -194,6 +194,65 @@ function buildProfessionalRiskNarrative(hostname, verdict, reasons, branded, sig
   return exposureSummary;
 }
 
+function buildExecutiveSummary(hostname, verdict, severity, priority, categories) {
+  const categoryText = categories.length ? categories.join(", ") : "general website risk";
+  return `Executive summary: ${hostname} is currently assessed as ${verdict} with ${severity.toLowerCase()} severity and ${priority} priority. The observed pattern aligns to ${categoryText}, indicating a credible phishing or credential-abuse scenario requiring user containment.`;
+}
+
+function buildImpactAssessment(hostname, verdict, signalProfile, categories) {
+  const impactBlocks = [];
+
+  if (signalProfile.hasCredentialRisk) {
+    impactBlocks.push("Credential impact: a user could expose login credentials, payment data, or session material if a password form is submitted or reused.");
+  }
+
+  if (signalProfile.hasBrandRisk) {
+    impactBlocks.push("Brand impact: domain impersonation threatens trust, can drive password reuse, and raises the likelihood of successful phishing execution.");
+  }
+
+  if (signalProfile.hasCookieRisk) {
+    impactBlocks.push("Privacy impact: tracking and session leakage may expose browsing patterns, persistent cookies, or authentication state.");
+  }
+
+  if (signalProfile.hasDownloadRisk) {
+    impactBlocks.push("Malware impact: malicious files or scripts could establish persistence or deliver additional payloads.");
+  }
+
+  if (signalProfile.hasExtensionRisk) {
+    impactBlocks.push("Endpoint impact: risky extension behavior can widen access to browser data or install unnecessary permissions.");
+  }
+
+  if (!impactBlocks.length) {
+    impactBlocks.push(`Impact assessment: there is no confirmed active compromise on ${hostname}, but the page still reflects a broader ${categories[0] || "website risk"} posture that warrants caution.`);
+  }
+
+  return impactBlocks.join(" ");
+}
+
+function buildTriageWorkflow(hostname, verdict, signalProfile, recommendedActions) {
+  const workflow = [
+    `Triage workflow: isolate the session on ${hostname}, stop any credential entry, and verify the page through a trusted brand route before resuming any work.`,
+    "Containment: close the tab or block access if the page requests credentials, banking data, or a login flow that does not match the known destination.",
+  ];
+
+  if (signalProfile.hasBrandRisk) {
+    workflow.push("Verification: confirm the exact domain manually, compare the URL against the trusted brand, and treat any mismatch as a phishing indicator.");
+  }
+
+  if (recommendedActions.length) {
+    workflow.push(`Operational follow-up: ${recommendedActions[0]}`);
+  }
+
+  workflow.push("Escalation: document the suspicious site, high-risk indicators, and any user impact before closing the investigation.");
+
+  return workflow.join(" ");
+}
+
+function buildTicketNarrative(hostname, verdict, severity, priority, categories) {
+  const categoryText = categories.length ? categories.join(" / ") : "general website risk";
+  return `Ticket-ready narrative: An incident was opened for ${hostname} and classified as ${severity} severity with ${priority} urgency. The observed indicators align to ${categoryText} and the page was assessed as ${verdict}. The recommended response was to contain access, block credential entry, and verify the destination through an independent trusted source before allowing any user interaction.`;
+}
+
 function buildAdvancedAssessment(question, evidence = {}) {
   const prepared = prepareAssistantEvidence(evidence);
   const hostname = prepared.hostname || "this page";
@@ -227,6 +286,10 @@ function buildAdvancedAssessment(question, evidence = {}) {
   const recommendedActions = suggestActionsForSignals(signalProfile, hostname, verdict);
   const responsePlaybooks = buildResponsePlaybooks(hostname, verdict, signalProfile);
   const incidentSummary = buildIncidentSummary(hostname, verdict, dynamicCategories, signalProfile);
+  const executiveSummary = buildExecutiveSummary(hostname, verdict, severity, priority, dynamicCategories);
+  const impactAssessment = buildImpactAssessment(hostname, verdict, signalProfile, dynamicCategories);
+  const triageWorkflow = buildTriageWorkflow(hostname, verdict, signalProfile, recommendedActions);
+  const ticketNarrative = buildTicketNarrative(hostname, verdict, severity, priority, dynamicCategories);
 
   const generalRiskContext = `This page is not a proof of active compromise, but it matches a risky profile with multiple security signals. The safest interpretation is to treat it as untrusted until the page has been verified through an independent, trusted route.`;
   const professionalNarrative = buildProfessionalRiskNarrative(hostname, verdict, reasons, branded, signalProfile);
@@ -284,6 +347,10 @@ function buildAdvancedAssessment(question, evidence = {}) {
       recommendedActions,
       responsePlaybooks,
       incidentSummary,
+      executiveSummary,
+      impactAssessment,
+      triageWorkflow,
+      ticketNarrative,
       labels: {
         riskLevel: "Risk level",
         confidence: "Confidence",
@@ -292,6 +359,10 @@ function buildAdvancedAssessment(question, evidence = {}) {
         severity: "Incident severity",
         priority: "Threat priority",
         playbooks: "Response playbooks",
+        executiveSummary: "Executive summary",
+        impactAssessment: "Impact assessment",
+        triageWorkflow: "Triage workflow",
+        ticketNarrative: "Ticket-ready narrative",
         privacySafe: "Privacy-safe",
       },
       evidenceSummary: `Privacy-safe analysis for ${hostname}. Sensitive values are redacted and no raw credentials or cookies are exposed.`,

@@ -61,6 +61,18 @@ function renderAnalysisSummary(analysis, isExpanded, onToggle, onAction) {
 
       <div className="assistant-analysis-grid">
         <div className="assistant-analysis-block">
+          <h4>Executive summary</h4>
+          <p>{analysis.executiveSummary || "Executive summary pending."}</p>
+        </div>
+
+        <div className="assistant-analysis-block">
+          <h4>Impact assessment</h4>
+          <p>{analysis.impactAssessment || "Impact assessment pending."}</p>
+        </div>
+      </div>
+
+      <div className="assistant-analysis-grid">
+        <div className="assistant-analysis-block">
           <h4>Threat categories</h4>
           <ul>
             {(analysis.categories ?? []).map((category) => (
@@ -86,6 +98,16 @@ function renderAnalysisSummary(analysis, isExpanded, onToggle, onAction) {
             <li key={playbook}>{playbook}</li>
           ))}
         </ul>
+      </div>
+
+      <div className="assistant-analysis-block">
+        <h4>Triage workflow</h4>
+        <p>{analysis.triageWorkflow || "Triage workflow pending."}</p>
+      </div>
+
+      <div className="assistant-analysis-block">
+        <h4>Ticket-ready narrative</h4>
+        <p>{analysis.ticketNarrative || "Ticket narrative pending."}</p>
       </div>
 
       <div className="assistant-action-row">

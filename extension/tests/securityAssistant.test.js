@@ -90,6 +90,32 @@ test("local assistant explains broader website risks even when the current page 
   assert.doesNotMatch(result.answer, /This page is considered trusted\./i);
 });
 
+test("assistant exposes a formal SOC brief with executive summary, impact, triage workflow, and ticket narrative", () => {
+  const result = explainSecurityRiskLocally("Summarize this incident for SOC triage.", {
+    hostname: "signin.paypal.example.test",
+    verdict: "high_risk",
+    scores: { finalTrustScore: 16 },
+    reasons: [
+      "Password form submits to a different domain",
+      "Page pretends to be a trusted brand and uses a login flow",
+    ],
+    signals: {
+      formPostsCrossDomain: true,
+      brandDomainMismatch: true,
+      loginOverlay: true,
+    },
+  });
+
+  assert.ok(result.analysis.executiveSummary);
+  assert.ok(result.analysis.impactAssessment);
+  assert.ok(result.analysis.triageWorkflow);
+  assert.ok(result.analysis.ticketNarrative);
+  assert.match(result.analysis.executiveSummary, /signin\.paypal\.example\.test|Executive summary/i);
+  assert.match(result.analysis.impactAssessment, /credential|phishing|impact/i);
+  assert.match(result.analysis.triageWorkflow, /triage|verify|contain|close/i);
+  assert.match(result.analysis.ticketNarrative, /ticket|incident|risk/i);
+});
+
 test("risky page lock screen is injected with explicit continue and close actions", async () => {
   const fs = await import("node:fs");
   const contentScriptPath = new URL("../src/content/contentScript.js", import.meta.url);
