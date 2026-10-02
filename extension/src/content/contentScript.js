@@ -38,6 +38,7 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
   let lastHref = window.location.href;
   let currentRiskOverlay = null;
   let previousBodyPointerEvents = "";
+  let previousDocumentOverflow = "";
 
   function getIgnoredRiskSites() {
     try {
@@ -236,6 +237,9 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       rootNode.style.pointerEvents = "none";
     }
 
+    previousDocumentOverflow = document.documentElement.style.overflow || "";
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.pointerEvents = "none";
     document.documentElement.appendChild(overlay);
     currentRiskOverlay = overlay;
   }
@@ -279,6 +283,9 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     if (document.body) {
       document.body.style.pointerEvents = previousBodyPointerEvents;
     }
+
+    document.documentElement.style.pointerEvents = "";
+    document.documentElement.style.overflow = previousDocumentOverflow;
     currentRiskOverlay = null;
   }
 

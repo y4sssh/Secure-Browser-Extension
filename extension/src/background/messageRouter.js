@@ -291,15 +291,15 @@ function shouldTriggerRiskLockdownForEvidence(evidence = {}) {
     ? Number(evidence.scores.finalTrustScore)
     : 100;
 
-  if (["risky", "high_risk"].includes(verdict)) {
+  if (verdict && verdict !== "trusted") {
     return true;
   }
 
   if (verdict === "caution") {
-    return finalTrustScore <= 60;
+    return finalTrustScore <= 80;
   }
 
-  return finalTrustScore <= 55;
+  return finalTrustScore <= 75;
 }
 
 function triggerRiskLockdownForEvidence(tabId, evidence) {
