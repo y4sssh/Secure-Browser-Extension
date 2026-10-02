@@ -89,6 +89,28 @@ function suggestActionsForSignals(signals, hostname, verdict) {
   return Array.from(actions).slice(0, 4);
 }
 
+function buildProfessionalRiskNarrative(hostname, verdict, reasons, branded, signalProfile) {
+  const primarySignals = [];
+
+  if (signalProfile.hasBrandRisk) primarySignals.push("brand spoofing or domain impersonation");
+  if (signalProfile.hasCredentialRisk) primarySignals.push("credential harvesting or form abuse");
+  if (signalProfile.hasCookieRisk) primarySignals.push("cookie and session tracking exposure");
+  if (signalProfile.hasDownloadRisk) primarySignals.push("download or malware delivery behavior");
+  if (signalProfile.hasExtensionRisk) primarySignals.push("extension or permission abuse");
+
+  const narrative = primarySignals.length
+    ? `The current evidence indicates a likely ${primarySignals.join(", ")}.`
+    : "The current evidence suggests a broad website-risk posture rather than a single clear exploit.";
+
+  const exposureSummary = `For ${hostname}, the assessment is ${verdict}. ${narrative} The browser review uses only sanitized indicators and does not expose raw credentials, cookies, or tokens.`;
+
+  if (branded) {
+    return `${exposureSummary} The page appears to imitate ${branded}, which materially increases phishing risk.`;
+  }
+
+  return exposureSummary;
+}
+
 function buildAdvancedAssessment(question, evidence = {}) {
   const prepared = prepareAssistantEvidence(evidence);
   const hostname = prepared.hostname || "this page";
@@ -120,47 +142,48 @@ function buildAdvancedAssessment(question, evidence = {}) {
   const recommendedActions = suggestActionsForSignals(signalProfile, hostname, verdict);
 
   const generalRiskContext = `This page is not a proof of active compromise, but it matches a risky profile with multiple security signals. The safest interpretation is to treat it as untrusted until the page has been verified through an independent, trusted route.`;
+  const professionalNarrative = buildProfessionalRiskNarrative(hostname, verdict, reasons, branded, signalProfile);
 
   let answer;
 
   if (/(what should i do|what now|advice)/.test(normalizedQuestion)) {
     if (verdict === "trusted" && !hasDirectRisk) {
-      answer = `${generalRiskContext} For ${hostname}, verify the exact domain, avoid entering credentials when a page looks unexpected, and keep browser extensions limited to trusted software.`;
+      answer = `${professionalNarrative} For ${hostname}, verify the exact domain, avoid entering credentials when a page looks unexpected, and keep browser extensions limited to trusted software.`;
     } else {
-      answer = `This page is considered ${verdict}. The strongest signals are ${reasons.slice(0, 2).join(" and ")}. Do not enter credentials on ${hostname}. Verify the domain directly in your browser and close the page if the URL or login flow looks unexpected.`;
+      answer = `${professionalNarrative} The strongest signals are ${reasons.slice(0, 2).join(" and ")}. Take immediate containment: do not enter credentials on ${hostname}, verify the domain directly in your browser, and close the page if the URL or login flow looks unexpected.`;
     }
   } else if (/(is this safe|safe\?)/.test(normalizedQuestion)) {
     if (verdict === "trusted" && !hasDirectRisk) {
-      answer = `${generalRiskContext} A page may still be safe today, but trust should be re-verified if it asks for a password, tries to redirect unexpectedly, or presents a brand mismatch. For ${hostname}, confirm the exact domain before entering any sensitive information.`;
+      answer = `${professionalNarrative} A page may still be safe today, but trust should be re-verified if it asks for a password, tries to redirect unexpectedly, or presents a brand mismatch. For ${hostname}, confirm the exact domain before entering any sensitive information.`;
     } else {
-      answer = `This page is not considered safe. It is flagged as ${verdict} because ${primaryReason}. Avoid credentials, payment details, and session tokens until the domain has been confirmed independently.`;
+      answer = `${professionalNarrative} This page should be treated as unsafe for credential entry, payment details, or session tokens until the domain has been confirmed independently.`;
     }
   } else if (/(why|because|risk|reason)/.test(normalizedQuestion)) {
     if (verdict === "trusted" && !hasDirectRisk) {
-      answer = `${generalRiskContext} The main risks to watch for are phishing and fake login pages, cross-domain form submissions, cookie tracking, malicious downloads, risky extensions, and general tracking or consent abuse. Verify the domain directly and treat links from search results or email messages as untrusted until confirmed.`;
+      answer = `${professionalNarrative} The main risks to watch for are phishing and fake login pages, cross-domain form submissions, cookie tracking, malicious downloads, risky extensions, and general tracking or consent abuse. Verify the domain directly and treat links from search results or email messages as untrusted until confirmed.`;
     } else {
-      answer = `This page is considered ${verdict}. ${primaryReason}`;
+      answer = `${professionalNarrative} ${primaryReason}`;
       if (reasons.length > 1) {
         answer += ` Additional signals: ${reasons.slice(1).join("; ")}.`;
       }
       if (branded) {
-        answer += ` The page appears to imitate ${branded}, which increases the phishing likelihood.`;
+        answer += ` The page appears to imitate ${branded}, which materially increases the phishing likelihood.`;
       }
     }
   } else if (/(domain|brand|url)/.test(normalizedQuestion)) {
     if (branded) {
-      answer = `The page appears to claim ${branded}, but it is hosted on ${hostname}. A brand and domain mismatch is a strong phishing indicator, especially when the page asks for a password or other credentials.`;
+      answer = `${professionalNarrative} The page appears to claim ${branded}, but it is hosted on ${hostname}. A brand and domain mismatch is a strong phishing indicator, especially when the page asks for a password or other credentials.`;
     } else {
-      answer = `The page is hosted on ${hostname}. Review the risk score and reasons before entering any credentials or personal information. Common website risks include fake login pages, malicious downloads, privacy leaks, and extension abuse.`;
+      answer = `${professionalNarrative} The page is hosted on ${hostname}. Review the risk score and reasons before entering any credentials or personal information. Common website risks include fake login pages, malicious downloads, privacy leaks, and extension abuse.`;
     }
   } else if (/(login|form|password)/.test(normalizedQuestion)) {
     if (verdict === "trusted" && !hasDirectRisk) {
       answer = `${generalRiskContext} If a login page asks for a password, make sure the domain is exact and that the form is not posting to a different site or unexpectedly asking for credentials. Never reuse a password across multiple sites.`;
     } else {
-      answer = `${primaryReason} If a password form submits to a different domain, uses a hidden field, or appears unexpectedly, do not enter your password on ${hostname}.`;
+      answer = `${professionalNarrative} ${primaryReason} If a password form submits to a different domain, uses a hidden field, or appears unexpectedly, do not enter your password on ${hostname}.`;
     }
   } else {
-    answer = `${generalRiskContext} If you are unsure, do not enter credentials on ${hostname}. Review the page origin, risk categories, and action recommendations before continuing.`;
+    answer = `${professionalNarrative} If you are unsure, do not enter credentials on ${hostname}. Review the page origin, risk categories, and action recommendations before continuing.`;
   }
 
   return {

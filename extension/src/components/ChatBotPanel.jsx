@@ -36,7 +36,7 @@ function renderAnalysisSummary(analysis, isExpanded, onToggle, onAction) {
         <div className="agent-status">
           <span className="agent-status-indicator agent-status-live">
             <span className="agent-status-dot" aria-hidden="true" />
-            AI Analyst
+            Senior Security Analyst
           </span>
           <span className="agent-status-subtext">
             {analysis.privacySafe ? "Privacy-safe" : "Live review"}
@@ -200,7 +200,7 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
             <div className="agent-status agent-status-empty">
               <span className="agent-status-indicator agent-status-live">
                 <span className="agent-status-dot" aria-hidden="true" />
-                AI Analyst
+                Senior Security Analyst
               </span>
               <span className="agent-status-subtext">Ready</span>
             </div>
@@ -235,7 +235,7 @@ export function ChatBotPanel({ latestEvidence, onAsk }) {
                       <div className="chatbot-message-meta">
                         <span className="agent-status-indicator agent-status-live">
                           <span className="agent-status-dot" aria-hidden="true" />
-                          Security analyst
+                          Senior Security Analyst
                         </span>
                         <span className="agent-status-subtext">{message.analysis?.privacySafe ? "Privacy-safe" : "Reviewing"}</span>
                       </div>
