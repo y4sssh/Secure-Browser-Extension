@@ -48,7 +48,15 @@ function renderAnalysisSummary(analysis, isExpanded, onToggle, onAction) {
         <span className={`assistant-pill assistant-pill-${String(analysis.riskLevel || "monitoring").toLowerCase()}`}>
           Risk level: {analysis.riskLevel || "Monitoring"}
         </span>
+        <span className="assistant-pill assistant-pill-high">
+          Severity: {analysis.severity || "Monitoring"}
+        </span>
+        <span className="assistant-confidence">Priority {analysis.priority || "P3"}</span>
         <span className="assistant-confidence">Confidence {analysis.confidence ?? 0}%</span>
+      </div>
+
+      <div className="assistant-analysis-summary">
+        <strong>Incident summary:</strong> {analysis.incidentSummary || "Privacy-safe security review in progress."}
       </div>
 
       <div className="assistant-analysis-grid">
@@ -69,6 +77,15 @@ function renderAnalysisSummary(analysis, isExpanded, onToggle, onAction) {
             ))}
           </ul>
         </div>
+      </div>
+
+      <div className="assistant-analysis-block">
+        <h4>Response playbooks</h4>
+        <ul>
+          {(analysis.responsePlaybooks ?? []).map((playbook) => (
+            <li key={playbook}>{playbook}</li>
+          ))}
+        </ul>
       </div>
 
       <div className="assistant-action-row">

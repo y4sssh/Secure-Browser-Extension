@@ -16,6 +16,89 @@ function getRiskLevel(verdict) {
   }
 }
 
+function getSeverityLevel(verdict, confidence) {
+  if (verdict === "high_risk" || verdict === "risky") {
+    return confidence >= 80 ? "Critical" : "High";
+  }
+  if (verdict === "caution") {
+    return "Moderate";
+  }
+  if (verdict === "trusted") {
+    return "Low";
+  }
+  return "Monitoring";
+}
+
+function rankThreatPriority(categories = [], signalProfile = {}) {
+  const priorityMap = [
+    { label: "Credential abuse", key: "Credential exposure", severity: "P1" },
+    { label: "Brand impersonation", key: "Brand spoofing", severity: "P1" },
+    { label: "Malicious delivery", key: "Malicious download vectors", severity: "P2" },
+    { label: "Session tracking", key: "Session tracking", severity: "P2" },
+    { label: "Extension abuse", key: "Extension abuse", severity: "P2" },
+  ];
+
+  const normalized = new Set(categories);
+  const matched = priorityMap.filter((entry) => normalized.has(entry.key));
+
+  if (matched.length) {
+    return matched[0].severity;
+  }
+
+  if (signalProfile.hasCredentialRisk || signalProfile.hasBrandRisk) {
+    return "P1";
+  }
+  if (signalProfile.hasDownloadRisk || signalProfile.hasCookieRisk || signalProfile.hasExtensionRisk) {
+    return "P2";
+  }
+  return "P3";
+}
+
+function buildIncidentSummary(hostname, verdict, categories, signalProfile) {
+  const topCategories = categories.slice(0, 3).join(", ");
+  const severity = getSeverityLevel(verdict, signalProfile.score ?? 70);
+
+  if (severity === "Critical" || severity === "High") {
+    return `High-priority security incident on ${hostname}: a likely ${topCategories} pattern requires immediate user containment and verification.`;
+  }
+
+  if (severity === "Moderate") {
+    return `Elevated risk on ${hostname}: the page shows a mixed ${topCategories} profile and should be treated as untrusted until verified.`;
+  }
+
+  return `Low to moderate risk on ${hostname}: no active compromise is proven, but the page still matches a broader website-risk pattern that requires caution.`;
+}
+
+function buildResponsePlaybooks(hostname, verdict, signalProfile) {
+  const playbooks = [];
+
+  if (signalProfile.hasCredentialRisk || verdict !== "trusted") {
+    playbooks.push(`Containment: do not enter credentials on ${hostname}; close the tab and verify the destination through a known, trusted route.`);
+  }
+
+  if (signalProfile.hasBrandRisk) {
+    playbooks.push("Brand protection: validate the exact domain manually and treat any impersonation or logo mismatch as a phishing indicator.");
+  }
+
+  if (signalProfile.hasCookieRisk) {
+    playbooks.push("Privacy response: clear cookies for the current site, avoid accepting tracking consent, and review any active sessions before continuing.");
+  }
+
+  if (signalProfile.hasDownloadRisk) {
+    playbooks.push("Download control: block executable, archive, or script downloads from this page and confirm source legitimacy before any install.");
+  }
+
+  if (signalProfile.hasExtensionRisk) {
+    playbooks.push("Endpoint hygiene: review the browser extension list and remove anything unfamiliar or with excessive permissions that could enable persistence.");
+  }
+
+  if (!playbooks.length) {
+    playbooks.push(`Monitoring: keep ${hostname} under review, avoid submitting credentials, and verify any unexpected redirects or brand changes before proceeding.`);
+  }
+
+  return playbooks.slice(0, 4);
+}
+
 function summarizeCategories(reasons = [], evidence = {}) {
   const categories = new Set();
   const text = reasons.join(" ").toLowerCase();
@@ -139,7 +222,11 @@ function buildAdvancedAssessment(question, evidence = {}) {
   const confidenceBase = 52 + reasons.length * 6 + (hasDirectRisk ? 10 : 0) + (verdict === "high_risk" ? 8 : verdict === "risky" ? 6 : verdict === "caution" ? 3 : 0);
   const confidence = Math.min(98, Math.max(55, confidenceBase + (signalProfile.score < 60 ? 8 : 0)));
   const riskLevel = getRiskLevel(verdict);
+  const severity = getSeverityLevel(verdict, confidence);
+  const priority = rankThreatPriority(dynamicCategories, signalProfile);
   const recommendedActions = suggestActionsForSignals(signalProfile, hostname, verdict);
+  const responsePlaybooks = buildResponsePlaybooks(hostname, verdict, signalProfile);
+  const incidentSummary = buildIncidentSummary(hostname, verdict, dynamicCategories, signalProfile);
 
   const generalRiskContext = `This page is not a proof of active compromise, but it matches a risky profile with multiple security signals. The safest interpretation is to treat it as untrusted until the page has been verified through an independent, trusted route.`;
   const professionalNarrative = buildProfessionalRiskNarrative(hostname, verdict, reasons, branded, signalProfile);
@@ -190,14 +277,21 @@ function buildAdvancedAssessment(question, evidence = {}) {
     answer: answer.trim(),
     analysis: {
       riskLevel,
+      severity,
+      priority,
       confidence: Math.round(confidence),
       categories: dynamicCategories,
       recommendedActions,
+      responsePlaybooks,
+      incidentSummary,
       labels: {
         riskLevel: "Risk level",
         confidence: "Confidence",
         categories: "Threat categories",
         actions: "Recommended actions",
+        severity: "Incident severity",
+        priority: "Threat priority",
+        playbooks: "Response playbooks",
         privacySafe: "Privacy-safe",
       },
       evidenceSummary: `Privacy-safe analysis for ${hostname}. Sensitive values are redacted and no raw credentials or cookies are exposed.`,
