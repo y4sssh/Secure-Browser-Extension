@@ -1,3 +1,6 @@
+import { evaluateUserRiskPolicy } from "../policy/userRiskPolicy.js";
+import { runHybridRiskModel } from "./modelPipeline.js";
+
 const VERDICTS = {
   TRUSTED: "trusted",
   CAUTION: "caution",
@@ -16,30 +19,72 @@ export function calculateFinalScore({
   urlResult,
   formResult,
   brandResult,
+  visualResult,
   brandRisk = 0,
   downloadRisk = 0,
   extensionExposureRisk = 0,
+  visualRisk = 0,
+  policy = null,
+  hostname = "",
 } = {}) {
   const urlRisk = clampRisk(urlResult?.risk);
   const formRisk = clampRisk(formResult?.risk);
   const normalizedBrandRisk = clampRisk(brandResult?.risk ?? brandRisk);
+  const normalizedVisualRisk = clampRisk(visualResult?.risk ?? visualRisk);
   const normalizedDownloadRisk = clampRisk(downloadRisk);
   const normalizedExtensionRisk = clampRisk(extensionExposureRisk);
   const weightedRisk =
     urlRisk * 0.36 +
     formRisk * 0.52 +
     normalizedBrandRisk * 0.06 +
-    normalizedDownloadRisk * 0.03 +
-    normalizedExtensionRisk * 0.03;
+    normalizedVisualRisk * 0.04 +
+    normalizedDownloadRisk * 0.01 +
+    normalizedExtensionRisk * 0.01;
   const synergyRisk = urlRisk >= 0.4 && formRisk >= 0.55 ? 0.06 : 0;
   const finalRisk = clampRisk(
-    Math.max(urlRisk, formRisk, normalizedBrandRisk, normalizedDownloadRisk, normalizedExtensionRisk, weightedRisk) + synergyRisk,
+    Math.max(urlRisk, formRisk, normalizedBrandRisk, normalizedVisualRisk, normalizedDownloadRisk, normalizedExtensionRisk, weightedRisk) + synergyRisk,
   );
+
+  const modelResult = runHybridRiskModel({
+    urlRisk,
+    formRisk,
+    brandRisk: normalizedBrandRisk,
+    visualRisk: normalizedVisualRisk,
+    payload: { hostname, domain: hostname },
+  });
+
+  const scoreFromModel = clampTrustScore(modelResult.finalScore);
   const finalTrustScore = clampTrustScore(100 - Math.round(finalRisk * 100));
-  const reasons = collectTopReasons(urlResult?.reasons, formResult?.reasons, brandResult?.reasons);
+  const reasons = collectTopReasons(
+    urlResult?.reasons,
+    formResult?.reasons,
+    brandResult?.reasons,
+    visualResult?.reasons,
+    modelResult?.reasons,
+  );
+
+  const policyDecision = evaluateUserRiskPolicy(policy, {
+    hostname,
+    finalTrustScore,
+    reasons,
+  });
+
+  let adjustedTrustScore = finalTrustScore;
+  if (policyDecision.action === "block") {
+    adjustedTrustScore = 0;
+  } else if (policyDecision.action === "warn") {
+    adjustedTrustScore = Math.min(adjustedTrustScore, 40);
+  }
+
+  const finalVerdict = getVerdict(adjustedTrustScore);
+  const finalSeverity = getAlertSeverity(adjustedTrustScore);
 
   if (reasons.length === 0) {
     reasons.push("No high-risk page, URL, or form signals found");
+  }
+
+  if (policyDecision.action !== "allow") {
+    reasons.push(policyDecision.reason);
   }
 
   return {
@@ -47,13 +92,18 @@ export function calculateFinalScore({
       urlRisk,
       formRisk,
       brandRisk: normalizedBrandRisk,
+      visualRisk: normalizedVisualRisk,
       downloadRisk: normalizedDownloadRisk,
       extensionExposureRisk: normalizedExtensionRisk,
-      finalTrustScore,
+      finalTrustScore: adjustedTrustScore,
+      modelScore: scoreFromModel,
+      policyAction: policyDecision.action,
     },
-    verdict: getVerdict(finalTrustScore),
-    severity: getAlertSeverity(finalTrustScore),
-    reasons,
+    verdict: finalVerdict,
+    severity: finalSeverity,
+    reasons: reasons.slice(0, 8),
+    model: modelResult,
+    policy: policyDecision,
   };
 }
 

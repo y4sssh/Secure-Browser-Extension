@@ -66,6 +66,19 @@ class WeeklyReportDocument(DatabaseDocument):
     recommendations: list[str] = Field(default_factory=list)
 
 
+class ThreatIntelDecisionDocument(TimestampedClientDocument):
+    hostname: str = Field(default="", max_length=253)
+    url: str = Field(default="", max_length=2048)
+    brand: str = Field(default="", max_length=128)
+    categories: list[str] = Field(default_factory=list)
+    risk_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    status: str = Field(default="unknown", max_length=32)
+    policy_action: str = Field(default="allow", max_length=16)
+    provider_breakdown: dict[str, Any] = Field(default_factory=dict)
+    model_metadata: dict[str, Any] = Field(default_factory=dict)
+    decision_id: str = Field(default="", max_length=128)
+
+
 PHASE_15_COLLECTIONS: dict[str, list[str]] = {
     "page_analyses": [
         "_id",
@@ -121,5 +134,20 @@ PHASE_15_COLLECTIONS: dict[str, list[str]] = {
         "summary",
         "top_risks",
         "recommendations",
+    ],
+    "threat_intel_decisions": [
+        "_id",
+        "client_id",
+        "timestamp",
+        "hostname",
+        "url",
+        "brand",
+        "categories",
+        "risk_score",
+        "status",
+        "policy_action",
+        "provider_breakdown",
+        "model_metadata",
+        "decision_id",
     ],
 }

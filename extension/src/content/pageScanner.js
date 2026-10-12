@@ -1,8 +1,9 @@
-import { calculateFinalScore } from "../lib/scoring/finalScore";
+import { calculateFinalScore } from "../lib/scoring/finalScore.js";
 import { collectKnownBrands, isAllowedBrandHost } from "../lib/brand/brandProfiles.js";
 import { scoreBrandGuard } from "../lib/scoring/brandGuardScore.js";
-import { scoreForms } from "../lib/scoring/formScore";
-import { getRegistrableDomain, scoreUrl } from "../lib/scoring/urlScore";
+import { scoreForms } from "../lib/scoring/formScore.js";
+import { getRegistrableDomain, scoreUrl } from "../lib/scoring/urlScore.js";
+import { scoreVisualBrandMismatch } from "../lib/scoring/visualBrandMismatch.js";
 
 const MAX_FORMS = 15;
 const MAX_IFRAMES = 8;
@@ -50,7 +51,21 @@ export function scanPage(trigger = "document_idle") {
     textSignals: pageContext.textSignals,
     urlFeatures: urlResult.features,
   });
-  const finalResult = calculateFinalScore({ urlResult, formResult, brandResult });
+  const visualResult = scoreVisualBrandMismatch({
+    pageUrl: pageUrl.href,
+    hostname: pageUrl.hostname,
+    title: document.title,
+    favicon: getFaviconUrl(document),
+    textSignals: pageContext.textSignals,
+    forms: formScan.forms,
+  });
+  const finalResult = calculateFinalScore({
+    urlResult,
+    formResult,
+    brandResult,
+    visualResult,
+    hostname: pageUrl.hostname,
+  });
   const aggregate = formResult.aggregate;
   const brandFeatures = brandResult.features;
 
@@ -102,12 +117,15 @@ export function scanPage(trigger = "document_idle") {
         aggregate.brandedCrossDomainCredentialFormCount > 0,
       textRisk: brandFeatures.textRisk,
       textSnippetCount: brandFeatures.textSnippetCount,
+      visualBrandMismatch: visualResult.mismatch,
+      visualRisk: visualResult.risk,
       iframeDepth: window.top === window ? 0 : 1,
     },
     features: {
       url: urlResult.features,
       forms: aggregate,
       brandGuard: brandFeatures,
+      visualBrandMismatch: visualResult,
       textSignals: pageContext.textSignals,
       formGuard: {
         pageHasLoginText: pageContext.hasLoginText,
@@ -123,6 +141,7 @@ export function scanPage(trigger = "document_idle") {
       timeline,
     },
     brandGuard: brandFeatures,
+    visualBrandMismatch: visualResult,
     textSignals: pageContext.textSignals,
     timeline,
     forms: formScan.forms.slice(0, MAX_FORMS),
@@ -131,6 +150,11 @@ export function scanPage(trigger = "document_idle") {
     severity: finalResult.severity,
     reasons: finalResult.reasons,
   };
+}
+
+function getFaviconUrl(ownerDocument) {
+  const faviconLink = ownerDocument.querySelector('link[rel~="icon"]') ?? ownerDocument.querySelector('link[rel="shortcut icon"]');
+  return faviconLink?.getAttribute("href") ?? "";
 }
 
 function collectForms(pageContext) {

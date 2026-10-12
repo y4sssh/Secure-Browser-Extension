@@ -15,6 +15,7 @@ from .api.analyze import router as analyze_router
 from .api.evidence import router as evidence_router
 from .api.reputation import router as reputation_router
 from .api.reports import router as reports_router
+from .api.threat_intel import router as threat_intel_router
 
 
 def create_app() -> FastAPI:
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
     app.include_router(evidence_router, prefix="/api/v1")
     app.include_router(reputation_router, prefix="/api/v1")
     app.include_router(reports_router, prefix="/api/v1")
+    app.include_router(threat_intel_router, prefix="/api/v1")
     return app
 
 

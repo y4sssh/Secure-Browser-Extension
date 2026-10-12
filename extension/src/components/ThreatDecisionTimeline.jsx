@@ -1,0 +1,105 @@
+import React, { useEffect, useState } from "react";
+import { Activity, Clock3, Download, ShieldAlert, ShieldCheck } from "lucide-react";
+import { loadThreatDecisionHistory } from "../lib/policy/userRiskPolicy.js";
+
+export default function ThreatDecisionTimeline() {
+  const [history, setHistory] = useState(() => loadThreatDecisionHistory(globalThis.localStorage));
+
+  useEffect(() => {
+    setHistory(loadThreatDecisionHistory(globalThis.localStorage));
+  }, []);
+
+  const exportHistory = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      decisions: history,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "threat_decision_history.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <section className="security-panel" aria-label="Recent threat decisions">
+      <div className="panel-header">
+        <div>
+          <span className="eyebrow">Decision history</span>
+          <h3>Recent threat-intel decisions</h3>
+        </div>
+        <div className="panel-actions">
+          <span className="pill neutral">{history.length} records</span>
+          <button type="button" className="button-primary compact" onClick={exportHistory}>
+            <Download size={14} /> Export
+          </button>
+        </div>
+      </div>
+
+      {history.length === 0 ? (
+        <div className="empty-state">No recent threat decisions yet. Risk verdicts will appear here after scanning.</div>
+      ) : (
+        <div className="decision-timeline">
+          {history.map((entry) => {
+            const providers = entry.providerBreakdown && typeof entry.providerBreakdown === "object"
+              ? Object.entries(entry.providerBreakdown)
+              : [];
+
+            const providerSummary = providers
+              .filter(([, value]) => value && typeof value === "object")
+              .map(([provider, value]) => `${provider}: ${value.status ?? "unknown"}`)
+              .join(" • ");
+
+            return (
+              <article key={entry.id} className="decision-item">
+                <div className="decision-item-header">
+                  <div>
+                    <strong>{entry.hostname}</strong>
+                    <small>{entry.url || "No URL recorded"}</small>
+                  </div>
+                  <span className={`pill ${entry.policyAction === "block" ? "danger" : entry.policyAction === "warn" ? "warning" : "safe"}`}>
+                    {entry.policyAction}
+                  </span>
+                </div>
+
+                <div className="meta-row">
+                  <span><Clock3 size={14} /> {new Date(entry.timestamp).toLocaleString()}</span>
+                  <span><Activity size={14} /> {entry.modelVersion || "unknown-model"}</span>
+                </div>
+
+                <div className="decision-summary">
+                  <div>
+                    <span className="detail-label">Status</span>
+                    <strong>{entry.status}</strong>
+                  </div>
+                  <div>
+                    <span className="detail-label">Risk score</span>
+                    <strong>{Number(entry.riskScore ?? 0).toFixed(2)}</strong>
+                  </div>
+                  <div>
+                    <span className="detail-label">Brand</span>
+                    <strong>{entry.brand || "Unspecified"}</strong>
+                  </div>
+                </div>
+
+                {providerSummary ? (
+                  <div className="provider-summary">
+                    <ShieldAlert size={14} />
+                    <span>{providerSummary}</span>
+                  </div>
+                ) : (
+                  <div className="provider-summary">
+                    <ShieldCheck size={14} />
+                    <span>No provider signals were available.</span>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

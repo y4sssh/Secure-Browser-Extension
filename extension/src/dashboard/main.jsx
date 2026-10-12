@@ -15,6 +15,7 @@ import { SignalGrid } from "../components/SignalGrid";
 import { TrustMeter } from "../components/TrustMeter";
 import PrivacyNotice from "../components/PrivacyNotice";
 import ConsentPanel from "../components/ConsentPanel";
+import PolicyDashboard from "../components/PolicyDashboard";
 import { MESSAGE_TYPES } from "../lib/chrome/messageTypes";
 import { sendRuntimeMessage } from "../lib/chrome/runtime";
 import { formatTimestamp, getPrimaryScore, getTrustLabel } from "../lib/evidence/evidenceSummary";
@@ -194,7 +195,7 @@ function DashboardApp() {
 
   const riskLevelClass = latest ? `severity-${getTrustLabel(score).toLowerCase().replace(/\s+/g, "-")}` : "severity-idle";
 
-  const navItems = ["Overview", "Threats", "Evidence", "Privacy"];
+  const navItems = ["Overview", "Threats", "Evidence", "Policies", "Privacy"];
 
   const overviewSection = (
     <div className="dashboard-section">
@@ -437,6 +438,12 @@ function DashboardApp() {
     </div>
   );
 
+  const policiesSection = (
+    <div className="dashboard-section">
+      <PolicyDashboard />
+    </div>
+  );
+
   const privacySection = (
     <div className="dashboard-section">
       <PrivacyNotice />
@@ -496,6 +503,7 @@ function DashboardApp() {
           {selectedSection === "Overview" && overviewSection}
           {selectedSection === "Threats" && threatsSection}
           {selectedSection === "Evidence" && evidenceSection}
+          {selectedSection === "Policies" && policiesSection}
           {selectedSection === "Privacy" && privacySection}
         </section>
       </div>

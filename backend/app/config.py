@@ -15,16 +15,23 @@ class Settings:
     mongodb_uri: str
     db_name: str
     vt_api_key: str
+    abuseipdb_api_key: str
+    phishtank_api_key: str
+    microsoft_ti_api_key: str
     allowed_origins: str
     allowed_origin_regex: str
     storage_backend: str
     mongodb_timeout_ms: int
+    threat_intel_provider_priority: list[str]
 
     def __init__(self):
         self.env = os.getenv("SECURE_BROWSER_ENV", "development")
         self.mongodb_uri = os.getenv("SECURE_BROWSER_MONGODB_URI", "")
         self.db_name = os.getenv("SECURE_BROWSER_DB_NAME", "secure_browser")
         self.vt_api_key = os.getenv("SECURE_BROWSER_VT_API_KEY", "")
+        self.abuseipdb_api_key = os.getenv("SECURE_BROWSER_ABUSEIPDB_API_KEY", "")
+        self.phishtank_api_key = os.getenv("SECURE_BROWSER_PHISHTANK_API_KEY", "")
+        self.microsoft_ti_api_key = os.getenv("SECURE_BROWSER_MICROSOFT_TI_API_KEY", "")
         self.allowed_origins = os.getenv(
             "SECURE_BROWSER_ALLOWED_ORIGINS",
             "http://localhost:5173",
@@ -38,6 +45,14 @@ class Settings:
         )
         self.storage_backend = os.getenv("SECURE_BROWSER_STORAGE_BACKEND", "auto").lower()
         self.mongodb_timeout_ms = int(os.getenv("SECURE_BROWSER_MONGODB_TIMEOUT_MS", "1000"))
+        self.threat_intel_provider_priority = [
+            item.strip().lower()
+            for item in os.getenv(
+                "SECURE_BROWSER_THREAT_INTEL_PROVIDERS",
+                "local,virustotal,abuseipdb,phishtank,microsoft",
+            ).split(",")
+            if item.strip()
+        ]
 
     @property
     def allowed_origin_list(self) -> list[str]:

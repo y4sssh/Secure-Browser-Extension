@@ -16,6 +16,7 @@ from ..models.database import (
     DownloadDocument,
     ExtensionFindingDocument,
     PageAnalysisDocument,
+    ThreatIntelDecisionDocument,
     WeeklyReportDocument,
     utc_now,
 )
@@ -30,6 +31,7 @@ COLLECTION_FILES = {
     "downloads": "downloads.jsonl",
     "extension_findings": "extension_findings.jsonl",
     "weekly_reports": "weekly_reports.jsonl",
+    "threat_intel_decisions": "threat_intel_decisions.jsonl",
 }
 
 DOCUMENT_MODELS = {
@@ -38,6 +40,7 @@ DOCUMENT_MODELS = {
     "downloads": DownloadDocument,
     "extension_findings": ExtensionFindingDocument,
     "weekly_reports": WeeklyReportDocument,
+    "threat_intel_decisions": ThreatIntelDecisionDocument,
 }
 
 
@@ -188,6 +191,29 @@ class DatabaseRepository:
 
     def insert_extension_finding(self, document: ExtensionFindingDocument) -> str:
         return self._insert_document("extension_findings", document)
+
+    def insert_threat_intel_decision(self, document: ThreatIntelDecisionDocument) -> str:
+        return self._insert_document("threat_intel_decisions", document)
+
+    def list_threat_intel_decisions(self, client_id: str | None = None, hostname: str | None = None) -> list[dict[str, Any]]:
+        if self.database is not None:
+            query: dict[str, Any] = {}
+            if client_id:
+                query["client_id"] = client_id
+            if hostname:
+                query["hostname"] = hostname
+            docs = self.database["threat_intel_decisions"].find(query).sort("timestamp", -1)
+            return [_document_to_public_dict(doc) for doc in docs]
+
+        records = self._read_jsonl_collection("threat_intel_decisions")
+        filtered: list[dict[str, Any]] = []
+        for item in records:
+            if client_id and str(item.get("client_id") or "") != str(client_id):
+                continue
+            if hostname and str(item.get("hostname") or "") != str(hostname):
+                continue
+            filtered.append(_document_to_public_dict(item))
+        return sorted(filtered, key=lambda item: item.get("timestamp", ""), reverse=True)
 
     def upsert_weekly_report(self, document: WeeklyReportDocument) -> str:
         if self.database is not None:

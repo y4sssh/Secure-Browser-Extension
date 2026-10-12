@@ -179,6 +179,44 @@ def test_reputation_virustotal_file_hash_endpoint(app_client):
     assert response.json()["fileHash"] == "d2d2d2d2"
 
 
+def test_threat_intel_lookup_endpoint(app_client):
+    payload = {"url": "https://amazon-signin.example/verify", "brand": "Amazon", "clientId": "client-42"}
+    response = app_client.post("/api/v1/threatintel/lookup", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] in {"known_phishing", "suspicious", "review"}
+    assert body["riskScore"] >= 0.5
+    assert body["modelVersion"] == "threat-intel-v1"
+    assert body["policyAction"] in {"warn", "block"}
+    assert body["clientId"] == "client-42"
+    assert "providerBreakdown" in body
+    assert body["modelMetadata"]["version"] == "threat-intel-v1"
+
+
+def test_threat_intel_policy_history_endpoint(app_client):
+    payload = {"url": "https://paypal-account-review.example/login", "brand": "PayPal", "clientId": "client-42"}
+    response = app_client.post("/api/v1/threatintel/lookup", json=payload)
+    assert response.status_code == 200
+    history = app_client.get("/api/v1/threatintel/decisions?clientId=client-42")
+    assert history.status_code == 200
+    body = history.json()
+    assert isinstance(body["decisions"], list)
+    assert body["decisions"][0]["clientId"] == "client-42"
+    assert body["decisions"][0]["hostname"] == "paypal-account-review.example"
+
+
+def test_threat_intel_export_report_endpoint(app_client):
+    payload = {"url": "https://amazon-signin.example/verify", "brand": "Amazon", "clientId": "client-export"}
+    response = app_client.post("/api/v1/threatintel/lookup", json=payload)
+    assert response.status_code == 200
+    export_response = app_client.get("/api/v1/threatintel/report/export?clientId=client-export")
+    assert export_response.status_code == 200
+    body = export_response.json()
+    assert body["clientId"] == "client-export"
+    assert body["summary"]["totalDecisions"] >= 1
+    assert "providers" in body
+
+
 def test_weekly_report_endpoint(app_client):
     response = app_client.get("/api/v1/reports/weekly?clientId=test-client")
     assert response.status_code == 200

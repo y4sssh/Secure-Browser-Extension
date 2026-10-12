@@ -289,6 +289,167 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     currentRiskOverlay = null;
   }
 
+  // Explainability banner: inject a small persistent banner when a page is flagged
+  function renderExplainabilityBanner(data = {}) {
+    try {
+      // avoid duplicate banners
+      if (document.getElementById("secure-browser-explain-banner")) return;
+
+      const banner = document.createElement("div");
+      banner.id = "secure-browser-explain-banner";
+      banner.style.position = "fixed";
+      banner.style.bottom = "18px";
+      banner.style.right = "18px";
+      banner.style.zIndex = "2147483646";
+      banner.style.background = "linear-gradient(90deg,#082032,#0f172a)";
+      banner.style.color = "#e6f0ff";
+      banner.style.padding = "10px 14px";
+      banner.style.borderRadius = "12px";
+      banner.style.boxShadow = "0 10px 30px rgba(2,6,23,0.6)";
+      banner.style.fontFamily = "system-ui, sans-serif";
+      banner.style.fontSize = "13px";
+      banner.style.display = "flex";
+      banner.style.alignItems = "center";
+      banner.style.gap = "10px";
+
+      const message = document.createElement("div");
+      message.textContent = data.title || "Secure Browser: page flagged";
+
+      const why = document.createElement("button");
+      why.type = "button";
+      why.textContent = "Why?";
+      why.style.background = "transparent";
+      why.style.color = "#bfdbfe";
+      why.style.border = "1px solid rgba(147,197,253,0.12)";
+      why.style.padding = "6px 10px";
+      why.style.borderRadius = "8px";
+      why.style.cursor = "pointer";
+      why.addEventListener("click", () => {
+        // deep-link to popup by opening the extension popup page in a new tab
+        // fallback: open dashboard.html shipped with extension
+        const dashboardUrl = chrome.runtime.getURL("dashboard.html");
+        window.open(dashboardUrl + "#explain?tabId=" + (data.tabId || ""), "_blank", "noopener");
+      });
+
+      const dismiss = document.createElement("button");
+      dismiss.type = "button";
+      dismiss.textContent = "Dismiss";
+      dismiss.style.background = "transparent";
+      dismiss.style.color = "#94a3b8";
+      dismiss.style.border = "none";
+      dismiss.style.padding = "6px 10px";
+      dismiss.style.borderRadius = "8px";
+      dismiss.style.cursor = "pointer";
+      dismiss.addEventListener("click", () => {
+        const el = document.getElementById("secure-browser-explain-banner");
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      });
+
+      banner.append(message, why, dismiss);
+      (document.body || document.documentElement).appendChild(banner);
+    } catch (e) {
+      // ignore DOM failures
+    }
+  }
+
+  // Expose a helper for other parts to show the explainability banner
+  window.__secureBrowserShowExplain = (data) => renderExplainabilityBanner(data);
+
+  // Inject a page-level script to intercept fetch and XHR for monitoring/blocking
+  function injectNetworkInterceptor() {
+    try {
+      const script = document.createElement("script");
+      script.type = "text/javascript";
+      script.textContent = `(() => {
+        const BLOCK_KEY = 'secureBrowser_block_rules';
+        // Simple heuristic: block requests to suspicious paths containing keywords
+        const suspiciousKeywords = ['login', 'auth', 'steal', 'collect', 'token', 'verify', 'credential'];
+
+        function isSuspicious(url) {
+          try {
+            const u = new URL(url, location.href);
+            const p = (u.pathname + ' ' + u.search).toLowerCase();
+            return suspiciousKeywords.some(k => p.includes(k));
+          } catch { return false; }
+        }
+
+        // POST a message to page context consumers to notify of blocked attempts
+        function notifyBlocked(info) {
+          window.postMessage({ source: 'secureBrowser', type: 'networkBlocked', payload: info }, '*');
+        }
+
+        // Wrap fetch
+        const origFetch = window.fetch;
+        window.fetch = function(input, init) {
+          try {
+            const url = (typeof input === 'string') ? input : (input && input.url) || '';
+            const method = (init && init.method) || (input && input.method) || 'GET';
+            if (isSuspicious(url)) {
+              const info = { url, method, reason: 'suspicious path keyword' };
+              notifyBlocked(info);
+              // return a failed promise to emulate network block
+              return Promise.reject(new TypeError('Network request blocked by Secure Browser'));
+            }
+          } catch (e) {}
+          return origFetch.apply(this, arguments);
+        };
+
+        // Wrap XHR
+        const OrigXHR = window.XMLHttpRequest;
+        function WrappedXHR() {
+          const xr = new OrigXHR();
+          let _url = '';
+          let _method = '';
+          const origOpen = xr.open;
+          xr.open = function(method, url) {
+            try { _url = url; _method = method || 'GET'; } catch {}
+            return origOpen.apply(this, arguments);
+          };
+          const origSend = xr.send;
+          xr.send = function(body) {
+            try {
+              if (isSuspicious(_url)) {
+                notifyBlocked({ url: _url, method: _method, reason: 'suspicious path keyword' });
+                // abort and trigger error
+                try { this.abort(); } catch(e) {}
+                if (typeof this.onerror === 'function') {
+                  try { this.onerror(new Error('Network request blocked by Secure Browser')); } catch(e) {}
+                }
+                return;
+              }
+            } catch(e) {}
+            return origSend.apply(this, arguments);
+          };
+          return xr;
+        }
+        WrappedXHR.prototype = OrigXHR.prototype;
+        window.XMLHttpRequest = WrappedXHR;
+      })();`;
+
+      (document.head || document.documentElement).appendChild(script);
+      script.parentNode.removeChild(script);
+    } catch (e) {
+      // ignore injection failures
+    }
+  }
+
+  // Listen for page->content messages about blocked network attempts
+  window.addEventListener('message', (ev) => {
+    try {
+      if (!ev.data || ev.data.source !== 'secureBrowser' || ev.data.type !== 'networkBlocked') return;
+      const payload = ev.data.payload || {};
+      // forward to background to log
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'secureBrowser.logBlockedRequest', payload }, (resp) => {});
+      }
+      // show explainability banner to user
+      try { window.__secureBrowserShowExplain({ title: 'Network request blocked', tabId: '' }); } catch {}
+    } catch (e) {}
+  }, false);
+
+  // inject on startup
+  injectNetworkInterceptor();
+
   function sendEvidence(trigger) {
     const payload = scanPage(trigger);
 
