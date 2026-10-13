@@ -26,6 +26,8 @@ export default function PolicyDashboard() {
     };
   }, [policy]);
 
+  const statusTone = summary.status === "Strict" ? "score-risky" : summary.status === "Balanced" ? "score-caution" : "score-trusted";
+
   const save = () => {
     const nextPolicy = {
       allowList: draft.split(/\n|,/).map((entry) => entry.trim()).filter(Boolean),
@@ -39,32 +41,32 @@ export default function PolicyDashboard() {
   };
 
   return (
-    <section className="security-panel" aria-label="User policy dashboard">
-      <div className="panel-header">
-        <div>
+    <section className="security-panel policy-panel" aria-label="User policy dashboard">
+      <div className="panel-header policy-header">
+        <div className="policy-header-copy">
           <span className="eyebrow">User policy</span>
           <h3>Trusted site controls</h3>
         </div>
-        <span className={`pill ${summary.status.toLowerCase()}`}>{summary.status}</span>
+        <span className={`score-pill ${statusTone}`}>{summary.status}</span>
       </div>
 
       <div className="policy-summary-grid">
-        <div className="mini-stat">
-          <ShieldCheck size={16} />
+        <div className="mini-stat mini-stat-success">
+          <div className="mini-stat-icon"><ShieldCheck size={16} /></div>
           <div>
             <strong>{summary.allowCount}</strong>
             <small>Allow listed</small>
           </div>
         </div>
-        <div className="mini-stat">
-          <ShieldX size={16} />
+        <div className="mini-stat mini-stat-danger">
+          <div className="mini-stat-icon"><ShieldX size={16} /></div>
           <div>
             <strong>{summary.blockCount}</strong>
             <small>Blocked</small>
           </div>
         </div>
-        <div className="mini-stat">
-          <ShieldAlert size={16} />
+        <div className="mini-stat mini-stat-warning">
+          <div className="mini-stat-icon"><ShieldAlert size={16} /></div>
           <div>
             <strong>{riskThreshold}%</strong>
             <small>Block threshold</small>
@@ -73,30 +75,34 @@ export default function PolicyDashboard() {
       </div>
 
       <div className="policy-grid">
-        <label className="field-block">
-          <span>Trusted domains</span>
-          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} rows={6} />
+        <label className="field-block policy-field">
+          <span className="field-label"><ShieldCheck size={14} /> Trusted domains</span>
+          <textarea className="policy-textarea" value={draft} onChange={(event) => setDraft(event.target.value)} rows={6} />
         </label>
 
-        <label className="field-block">
-          <span>Blocked domains</span>
-          <textarea value={blocked} onChange={(event) => setBlocked(event.target.value)} rows={6} />
+        <label className="field-block policy-field">
+          <span className="field-label"><ShieldX size={14} /> Blocked domains</span>
+          <textarea className="policy-textarea" value={blocked} onChange={(event) => setBlocked(event.target.value)} rows={6} />
         </label>
       </div>
 
       <div className="policy-range-grid">
-        <label className="field-block">
-          <span>Block threshold: {riskThreshold}%</span>
-          <input type="range" min="20" max="95" value={riskThreshold} onChange={(event) => setRiskThreshold(Number(event.target.value))} />
+        <label className="field-block range-field">
+          <span className="field-label">Block threshold: {riskThreshold}%</span>
+          <input className="policy-range" type="range" min="20" max="95" value={riskThreshold} onChange={(event) => setRiskThreshold(Number(event.target.value))} />
+          <div className="range-scale"><span>20%</span><span>95%</span></div>
         </label>
 
-        <label className="field-block">
-          <span>Warn threshold: {warnThreshold}%</span>
-          <input type="range" min="5" max="70" value={warnThreshold} onChange={(event) => setWarnThreshold(Number(event.target.value))} />
+        <label className="field-block range-field">
+          <span className="field-label">Warn threshold: {warnThreshold}%</span>
+          <input className="policy-range" type="range" min="5" max="70" value={warnThreshold} onChange={(event) => setWarnThreshold(Number(event.target.value))} />
+          <div className="range-scale"><span>5%</span><span>70%</span></div>
         </label>
       </div>
 
-      <button type="button" className="button-primary" onClick={save}>Save policy</button>
+      <div className="policy-actions">
+        <button type="button" className="button-primary" onClick={save}>Save policy</button>
+      </div>
 
       <ThreatDecisionTimeline />
     </section>

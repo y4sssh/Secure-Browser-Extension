@@ -32,22 +32,22 @@ export default function ThreatDecisionTimeline() {
   };
 
   return (
-    <section className="security-panel" aria-label="Recent threat decisions">
-      <div className="panel-header">
+    <section className="security-panel decision-panel" aria-label="Recent threat decisions">
+      <div className="panel-header panel-header-compact">
         <div>
           <span className="eyebrow">Decision history</span>
           <h3>Recent threat-intel decisions</h3>
         </div>
-        <div className="panel-actions">
-          <span className="pill neutral">{history.length} records</span>
-          <button type="button" className="button-primary compact" onClick={exportHistory}>
+        <div className="panel-actions policy-export-actions">
+          <span className="score-pill score-neutral">{history.length} records</span>
+          <button type="button" className="button-secondary compact-button" onClick={exportHistory}>
             <Download size={14} /> Export
           </button>
         </div>
       </div>
 
       {history.length === 0 ? (
-        <div className="empty-state">No recent threat decisions yet. Risk verdicts will appear here after scanning.</div>
+        <div className="empty-state policy-empty-state">No recent threat decisions yet. Risk verdicts will appear here after scanning.</div>
       ) : (
         <div className="decision-timeline">
           {history.map((entry) => {
@@ -60,19 +60,23 @@ export default function ThreatDecisionTimeline() {
               .map(([provider, value]) => `${provider}: ${value.status ?? "unknown"}`)
               .join(" • ");
 
+            const badgeClass = entry.policyAction === "block"
+              ? "score-risky"
+              : entry.policyAction === "warn"
+                ? "score-caution"
+                : "score-trusted";
+
             return (
               <article key={entry.id} className="decision-item">
                 <div className="decision-item-header">
-                  <div>
+                  <div className="decision-host-block">
                     <strong>{entry.hostname}</strong>
                     <small>{entry.url || "No URL recorded"}</small>
                   </div>
-                  <span className={`pill ${entry.policyAction === "block" ? "danger" : entry.policyAction === "warn" ? "warning" : "safe"}`}>
-                    {entry.policyAction}
-                  </span>
+                  <span className={`score-pill ${badgeClass}`}>{entry.policyAction}</span>
                 </div>
 
-                <div className="meta-row">
+                <div className="meta-row decision-meta-row">
                   <span><Clock3 size={14} /> {new Date(entry.timestamp).toLocaleString()}</span>
                   <span><Activity size={14} /> {entry.modelVersion || "unknown-model"}</span>
                 </div>
@@ -98,7 +102,7 @@ export default function ThreatDecisionTimeline() {
                     <span>{providerSummary}</span>
                   </div>
                 ) : (
-                  <div className="provider-summary">
+                  <div className="provider-summary provider-summary-safe">
                     <ShieldCheck size={14} />
                     <span>No provider signals were available.</span>
                   </div>
