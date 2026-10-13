@@ -72,22 +72,30 @@ async function handleMessage(message, sender) {
       }
 
       if (message.action === "close") {
+        clearRiskLockdownBadge(tabId);
         await chrome.tabs.remove(tabId);
         return { ok: true, closed: true };
       }
 
       if (message.action === "reload") {
+        clearRiskLockdownBadge(tabId);
         await chrome.tabs.reload(tabId);
         return { ok: true, reloaded: true };
       }
 
       if (message.action === "continue") {
+        clearRiskLockdownBadge(tabId);
         try {
           sessionStorage.setItem("secureBrowser.riskLockdownAllowed", "true");
         } catch {
           // Ignore storage failures; the page overlay is still removed locally.
         }
         return { ok: true, continued: true };
+      }
+
+      if (message.action === "ignore_site") {
+        clearRiskLockdownBadge(tabId);
+        return { ok: true, ignored: true };
       }
 
       return { ok: false, error: `Unknown risk-lockdown action: ${message.action}` };
@@ -197,9 +205,22 @@ function handleTabUpdated(tabId, changeInfo, tab) {
   requestPageScan(tabId);
 }
 
+function clearRiskLockdownBadge(tabId) {
+  if (!tabId) return;
+
+  try {
+    chrome.action?.setBadgeText({ tabId, text: "" });
+    chrome.action?.setTitle({ tabId, title: "Secure Browser" });
+  } catch {
+    // Ignore unsupported/unavailable browser-action primitives.
+  }
+}
+
 function startNavigation(tabId, url) {
   const safeUrl = sanitizeUrl(url);
   if (!safeUrl) return;
+
+  clearRiskLockdownBadge(tabId);
 
   navigationByTab.set(tabId, {
     startedAt: Date.now(),
@@ -316,6 +337,14 @@ function triggerRiskLockdownForEvidence(tabId, evidence) {
   const finalTrustScore = Number.isFinite(evidence?.scores?.finalTrustScore)
     ? Number(evidence.scores.finalTrustScore)
     : 100;
+
+  try {
+    chrome.action?.setBadgeText({ tabId, text: "!" });
+    chrome.action?.setBadgeBackgroundColor({ tabId, color: "#ef4444" });
+    chrome.action?.setTitle({ tabId, title: `Blocked risky page: ${evidence?.hostname || "unknown site"}` });
+  } catch {
+    // Ignore unsupported browser-action badge updates.
+  }
 
   chrome.tabs.sendMessage(
     tabId,

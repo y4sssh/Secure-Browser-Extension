@@ -235,6 +235,7 @@ test("risk lockdown triggers before a page only reaches the highest-risk bucket"
   assert.ok(router.includes("shouldTriggerRiskLockdownForEvidence"), "Background router should gate the overlay via a dedicated helper");
   assert.ok(router.includes("verdict !== \"trusted\""), "Any non-trusted verdict should trigger the overlay for suspicious sites");
   assert.ok(contentScript.includes("document.documentElement.style.overflow = \"hidden\""), "The overlay should actively freeze the page behind the warning");
+  assert.ok(router.includes("setBadgeText"), "Background router should set a browser-action warning badge when a risky page is blocked");
 });
 
 test("extension health panel collapses repeated identical scans", async () => {

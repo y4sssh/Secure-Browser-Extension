@@ -39,6 +39,9 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
   let currentRiskOverlay = null;
   let previousBodyPointerEvents = "";
   let previousDocumentOverflow = "";
+  let riskLockdownActive = false;
+  let riskLockdownGuard = null;
+  let riskLockdownObserver = null;
 
   function getIgnoredRiskSites() {
     try {
@@ -75,10 +78,103 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     }
   }
 
-  function renderRiskLockdown(payload = {}, hostname) {
-    if (currentRiskOverlay && currentRiskOverlay.isConnected) {
+  function installRiskLockdownGuard() {
+    if (riskLockdownGuard) {
       return;
     }
+
+    const suppressEvent = (event) => {
+      if (event.target && event.target.closest && event.target.closest("#secure-browser-risk-lockdown, #secure-browser-risk-toast, #secure-browser-risk-topbar")) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.type === "keydown") {
+        event.stopImmediatePropagation();
+      }
+    };
+
+    riskLockdownGuard = {
+      suppressEvent,
+      handleKeydown: (event) => {
+        if (event.key === "Tab" || event.key === "Escape" || event.key === "F5") {
+          event.preventDefault();
+        }
+        suppressEvent(event);
+      },
+    };
+
+    document.addEventListener("mousedown", suppressEvent, true);
+    document.addEventListener("mouseup", suppressEvent, true);
+    document.addEventListener("click", suppressEvent, true);
+    document.addEventListener("keydown", riskLockdownGuard.handleKeydown, true);
+    document.addEventListener("touchstart", suppressEvent, true);
+    document.addEventListener("touchmove", suppressEvent, { passive: false, capture: true });
+    document.addEventListener("wheel", suppressEvent, { passive: false, capture: true });
+    document.addEventListener("scroll", suppressEvent, { passive: false, capture: true });
+  }
+
+  function removeRiskLockdownGuard() {
+    if (!riskLockdownGuard) {
+      return;
+    }
+
+    document.removeEventListener("mousedown", riskLockdownGuard.suppressEvent, true);
+    document.removeEventListener("mouseup", riskLockdownGuard.suppressEvent, true);
+    document.removeEventListener("click", riskLockdownGuard.suppressEvent, true);
+    document.removeEventListener("keydown", riskLockdownGuard.handleKeydown, true);
+    document.removeEventListener("touchstart", riskLockdownGuard.suppressEvent, true);
+    document.removeEventListener("touchmove", riskLockdownGuard.suppressEvent, { passive: false, capture: true });
+    document.removeEventListener("wheel", riskLockdownGuard.suppressEvent, { passive: false, capture: true });
+    document.removeEventListener("scroll", riskLockdownGuard.suppressEvent, { passive: false, capture: true });
+    riskLockdownGuard = null;
+  }
+
+  function startRiskLockdownPersistence() {
+    if (riskLockdownObserver) {
+      return;
+    }
+
+    riskLockdownObserver = new MutationObserver(() => {
+      if (!riskLockdownActive) {
+        return;
+      }
+
+      if (currentRiskOverlay && currentRiskOverlay.isConnected) {
+        return;
+      }
+
+      const rootNode = document.documentElement || document.body;
+      if (rootNode && currentRiskOverlay) {
+        rootNode.appendChild(currentRiskOverlay);
+      }
+    });
+
+    const targetNode = document.documentElement || document.body;
+    if (targetNode) {
+      riskLockdownObserver.observe(targetNode, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+    }
+  }
+
+  function stopRiskLockdownPersistence() {
+    if (riskLockdownObserver) {
+      riskLockdownObserver.disconnect();
+      riskLockdownObserver = null;
+    }
+  }
+
+  function renderRiskLockdown(payload = {}, hostname) {
+    if (currentRiskOverlay && currentRiskOverlay.isConnected) {
+      installRiskLockdownGuard();
+      return;
+    }
+
+    riskLockdownActive = true;
+    installRiskLockdownGuard();
 
     const reasons = Array.isArray(payload.reasons) && payload.reasons.length > 0
       ? payload.reasons.slice(0, 4)
@@ -407,16 +503,18 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     const rootNode = document.body || document.documentElement;
     if (rootNode) {
       previousBodyPointerEvents = rootNode.style.pointerEvents || "";
-      rootNode.style.pointerEvents = "none";
+      rootNode.style.pointerEvents = "";
       rootNode.style.userSelect = "none";
+      rootNode.setAttribute("aria-hidden", "true");
     }
 
     previousDocumentOverflow = document.documentElement.style.overflow || "";
     document.documentElement.style.overflow = "hidden";
-    document.documentElement.style.pointerEvents = "none";
     document.documentElement.style.filter = "saturate(0.65) brightness(0.85)";
+    overlay.style.pointerEvents = "auto";
     document.documentElement.appendChild(overlay);
     currentRiskOverlay = overlay;
+    startRiskLockdownPersistence();
   }
 
   function showRiskLockdown(payload = {}) {
@@ -425,6 +523,11 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       if (sessionOverride === "true") {
         return;
       }
+    }
+
+    if (riskLockdownActive && currentRiskOverlay && currentRiskOverlay.isConnected) {
+      installRiskLockdownGuard();
+      return;
     }
 
     const hostname = payload.hostname || window.location.hostname || "this page";
@@ -463,6 +566,13 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     document.documentElement.style.pointerEvents = "";
     document.documentElement.style.overflow = previousDocumentOverflow;
     document.documentElement.style.filter = "";
+    riskLockdownActive = false;
+    removeRiskLockdownGuard();
+    stopRiskLockdownPersistence();
+
+    if (document.body) {
+      document.body.removeAttribute("aria-hidden");
+    }
 
     const toastEl = document.getElementById("secure-browser-risk-toast");
     if (toastEl && toastEl.parentNode) {
