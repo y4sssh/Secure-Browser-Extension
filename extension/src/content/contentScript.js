@@ -84,6 +84,47 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       ? payload.reasons.slice(0, 4)
       : ["This page shows signs of phishing, fake login behavior, or credential theft risk."];
 
+    const toast = document.createElement("div");
+    toast.id = "secure-browser-risk-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.style.position = "fixed";
+    toast.style.top = "18px";
+    toast.style.right = "18px";
+    toast.style.width = "min(360px, calc(100vw - 28px))";
+    toast.style.zIndex = "2147483648";
+    toast.style.background = "linear-gradient(180deg, rgba(127, 29, 29, 0.98), rgba(69, 10, 10, 0.98))";
+    toast.style.border = "1px solid rgba(254, 202, 202, 0.65)";
+    toast.style.borderRadius = "14px";
+    toast.style.boxShadow = "0 18px 42px rgba(2, 6, 23, 0.56)";
+    toast.style.padding = "12px 14px";
+    toast.style.color = "#fff7ed";
+    toast.style.fontFamily = "system-ui, sans-serif";
+    toast.style.pointerEvents = "auto";
+    toast.style.backdropFilter = "blur(8px)";
+
+    const toastTitle = document.createElement("div");
+    toastTitle.textContent = "Secure Browser blocked this page";
+    toastTitle.style.fontWeight = "800";
+    toastTitle.style.marginBottom = "4px";
+    toastTitle.style.fontSize = "13px";
+    toastTitle.style.letterSpacing = "0.04em";
+    toastTitle.style.textTransform = "uppercase";
+
+    const toastBody = document.createElement("div");
+    toastBody.textContent = "This page looks unsafe. Close the tab or reload only after confirming the destination.";
+    toastBody.style.lineHeight = "1.5";
+    toastBody.style.fontSize = "13px";
+    toastBody.style.color = "#fee2e2";
+
+    toast.append(toastTitle, toastBody);
+    document.documentElement.appendChild(toast);
+    window.setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 8000);
+
     const overlay = document.createElement("div");
     overlay.id = "secure-browser-risk-lockdown";
     overlay.setAttribute("role", "dialog");
@@ -174,6 +215,66 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     recommendationText.style.lineHeight = "1.5";
     recommendation.append(recommendationLabel, recommendationText);
 
+    const reloadConfirm = document.createElement("div");
+    reloadConfirm.style.display = "none";
+    reloadConfirm.style.margin = "0 0 14px";
+    reloadConfirm.style.padding = "10px 12px";
+    reloadConfirm.style.borderRadius = "10px";
+    reloadConfirm.style.background = "rgba(15, 23, 42, 0.7)";
+    reloadConfirm.style.border = "1px solid rgba(248, 250, 252, 0.4)";
+
+    const reloadConfirmText = document.createElement("p");
+    reloadConfirmText.textContent = "Reloading this page is safe only if you have verified the destination URL. If you are not sure, keep the page blocked.";
+    reloadConfirmText.style.margin = "0";
+    reloadConfirmText.style.lineHeight = "1.5";
+    reloadConfirmText.style.color = "#f8fafc";
+
+    const reloadConfirmActions = document.createElement("div");
+    reloadConfirmActions.style.display = "flex";
+    reloadConfirmActions.style.gap = "10px";
+    reloadConfirmActions.style.marginTop = "10px";
+    reloadConfirmActions.style.flexWrap = "wrap";
+
+    const confirmReloadButton = document.createElement("button");
+    confirmReloadButton.type = "button";
+    confirmReloadButton.textContent = "Yes, reload";
+    confirmReloadButton.style.flex = "1 1 140px";
+    confirmReloadButton.style.padding = "10px 12px";
+    confirmReloadButton.style.borderRadius = "10px";
+    confirmReloadButton.style.border = "1px solid rgba(34, 197, 94, 0.5)";
+    confirmReloadButton.style.background = "#14532d";
+    confirmReloadButton.style.color = "#ecfdf5";
+    confirmReloadButton.style.fontWeight = "700";
+    confirmReloadButton.style.cursor = "pointer";
+    confirmReloadButton.addEventListener("click", () => {
+      try {
+        window.location.reload();
+      } catch {
+        chrome.runtime.sendMessage(
+          { type: MESSAGE_TYPES.RISK_LOCKDOWN_ACTION, action: "reload", tabId: payload.tabId },
+          () => void chrome.runtime.lastError,
+        );
+      }
+    });
+
+    const keepBlockedButton = document.createElement("button");
+    keepBlockedButton.type = "button";
+    keepBlockedButton.textContent = "Keep blocked";
+    keepBlockedButton.style.flex = "1 1 140px";
+    keepBlockedButton.style.padding = "10px 12px";
+    keepBlockedButton.style.borderRadius = "10px";
+    keepBlockedButton.style.border = "1px solid rgba(148, 163, 184, 0.5)";
+    keepBlockedButton.style.background = "#0f172a";
+    keepBlockedButton.style.color = "#e2e8f0";
+    keepBlockedButton.style.fontWeight = "600";
+    keepBlockedButton.style.cursor = "pointer";
+    keepBlockedButton.addEventListener("click", () => {
+      reloadConfirm.style.display = "none";
+    });
+
+    reloadConfirmActions.append(confirmReloadButton, keepBlockedButton);
+    reloadConfirm.append(reloadConfirmText, reloadConfirmActions);
+
     const strictNotice = document.createElement("div");
     strictNotice.style.margin = "0 0 16px";
     strictNotice.style.padding = "10px 12px";
@@ -221,14 +322,7 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     reloadButton.style.fontWeight = "700";
     reloadButton.style.cursor = "pointer";
     reloadButton.addEventListener("click", () => {
-      try {
-        window.location.reload();
-      } catch {
-        chrome.runtime.sendMessage(
-          { type: MESSAGE_TYPES.RISK_LOCKDOWN_ACTION, action: "reload", tabId: payload.tabId },
-          () => void chrome.runtime.lastError,
-        );
-      }
+      reloadConfirm.style.display = "block";
     });
 
     const ignoreButton = document.createElement("button");
@@ -259,7 +353,7 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     footer.style.lineHeight = "1.5";
 
     actionRow.append(closeButton, reloadButton, ignoreButton);
-    panel.append(badge, title, description, reasonsList, recommendation, strictNotice, actionRow, footer);
+    panel.append(badge, title, description, reasonsList, recommendation, reloadConfirm, strictNotice, actionRow, footer);
     overlay.appendChild(panel);
 
     const rootNode = document.body || document.documentElement;
