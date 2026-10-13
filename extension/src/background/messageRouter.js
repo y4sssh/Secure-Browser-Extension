@@ -76,6 +76,11 @@ async function handleMessage(message, sender) {
         return { ok: true, closed: true };
       }
 
+      if (message.action === "reload") {
+        await chrome.tabs.reload(tabId);
+        return { ok: true, reloaded: true };
+      }
+
       if (message.action === "continue") {
         try {
           sessionStorage.setItem("secureBrowser.riskLockdownAllowed", "true");

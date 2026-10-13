@@ -206,8 +206,10 @@ test("risky page lock screen is injected with explicit continue and close action
   const contentScript = fs.readFileSync(contentScriptPath, "utf8");
   const messageTypes = fs.readFileSync(messageTypesPath, "utf8");
 
-  assert.ok(contentScript.includes("Continue anyway"), "Overlay should offer a continue choice");
+  assert.ok(contentScript.includes("Secure Browser blocked this page"), "Overlay should present a browser-native blocked-page notification");
   assert.ok(contentScript.includes("Close tab"), "Overlay should offer a close-tab action");
+  assert.ok(contentScript.includes("Reload page"), "Overlay should force a reload or close flow for risky pages");
+  assert.ok(contentScript.includes("must close this tab or reload the page"), "Overlay should require a safe close-or-reload action instead of a direct continue bypass");
   assert.ok(contentScript.includes("riskLockdown"), "Content script should handle a risky-page lockdown message");
   assert.ok(contentScript.includes("Ignore for this site"), "Overlay should offer a site-level ignore option");
   assert.ok(contentScript.includes("Recommended action"), "Overlay should surface a clear recommendation text");

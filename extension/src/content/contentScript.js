@@ -101,35 +101,57 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     overlay.style.pointerEvents = "auto";
 
     const panel = document.createElement("div");
-    panel.style.background = "#111827";
-    panel.style.border = "1px solid rgba(248, 113, 113, 0.5)";
+    panel.style.position = "fixed";
+    panel.style.top = "18px";
+    panel.style.right = "18px";
+    panel.style.width = "min(420px, calc(100vw - 32px))";
+    panel.style.maxWidth = "420px";
+    panel.style.background = "linear-gradient(180deg, rgba(127, 29, 29, 0.96), rgba(69, 10, 10, 0.96))";
+    panel.style.border = "1px solid rgba(254, 202, 202, 0.6)";
     panel.style.borderRadius = "18px";
-    panel.style.maxWidth = "560px";
-    panel.style.width = "100%";
-    panel.style.boxShadow = "0 28px 80px rgba(0,0,0,0.45)";
-    panel.style.padding = "24px 24px 20px";
-    panel.style.color = "#eff6ff";
+    panel.style.boxShadow = "0 24px 80px rgba(2, 6, 23, 0.72)";
+    panel.style.padding = "18px 18px 16px";
+    panel.style.color = "#fff7ed";
+    panel.style.zIndex = "2147483648";
+    panel.style.backdropFilter = "blur(10px)";
+    panel.style.cursor = "default";
+
+    const badge = document.createElement("div");
+    badge.textContent = "Secure Browser blocked this page";
+    badge.style.display = "inline-flex";
+    badge.style.alignItems = "center";
+    badge.style.justifyContent = "center";
+    badge.style.padding = "7px 10px";
+    badge.style.marginBottom = "12px";
+    badge.style.borderRadius = "999px";
+    badge.style.background = "rgba(15, 23, 42, 0.44)";
+    badge.style.border = "1px solid rgba(254, 202, 202, 0.45)";
+    badge.style.color = "#fee2e2";
+    badge.style.fontWeight = "700";
+    badge.style.fontSize = "11px";
+    badge.style.letterSpacing = "0.06em";
+    badge.style.textTransform = "uppercase";
 
     const title = document.createElement("h2");
-    title.textContent = "This page looks risky";
+    title.textContent = "This page is unsafe to continue";
     title.style.margin = "0 0 10px";
-    title.style.fontSize = "28px";
+    title.style.fontSize = "24px";
     title.style.lineHeight = "1.2";
 
     const description = document.createElement("p");
-    description.textContent = "The extension detected a likely phishing, fake login, or credential theft pattern on ";
+    description.textContent = "Secure Browser detected a likely phishing, fake login, or credential theft pattern on ";
     const hostSpan = document.createElement("strong");
     hostSpan.textContent = hostname;
     description.appendChild(hostSpan);
-    description.style.margin = "0 0 14px";
-    description.style.color = "#dbeafe";
+    description.style.margin = "0 0 12px";
+    description.style.color = "#fff0f0";
     description.style.lineHeight = "1.5";
-    description.style.fontSize = "15px";
+    description.style.fontSize = "14px";
 
     const reasonsList = document.createElement("ul");
-    reasonsList.style.margin = "0 0 18px";
+    reasonsList.style.margin = "0 0 14px";
     reasonsList.style.paddingLeft = "18px";
-    reasonsList.style.color = "#e2e8f0";
+    reasonsList.style.color = "#fee2e2";
     reasonsList.style.lineHeight = "1.5";
     reasons.forEach((reason) => {
       const item = document.createElement("li");
@@ -138,33 +160,44 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     });
 
     const recommendation = document.createElement("div");
-    recommendation.style.margin = "0 0 18px";
-    recommendation.style.padding = "12px 14px";
+    recommendation.style.margin = "0 0 14px";
+    recommendation.style.padding = "10px 12px";
     recommendation.style.borderRadius = "10px";
-    recommendation.style.background = "rgba(30, 41, 59, 0.9)";
-    recommendation.style.border = "1px solid rgba(96, 165, 250, 0.35)";
+    recommendation.style.background = "rgba(15, 23, 42, 0.42)";
+    recommendation.style.border = "1px solid rgba(254, 202, 202, 0.38)";
     const recommendationLabel = document.createElement("strong");
     recommendationLabel.textContent = "Recommended action";
     const recommendationText = document.createElement("p");
-    recommendationText.textContent = "Close the tab or leave the page before entering credentials, payment details, or multi-factor codes.";
+    recommendationText.textContent = "Close this tab or reload the page before entering credentials, payment details, or multi-factor codes.";
     recommendationText.style.margin = "6px 0 0";
-    recommendationText.style.color = "#dbeafe";
+    recommendationText.style.color = "#fff0f0";
     recommendationText.style.lineHeight = "1.5";
     recommendation.append(recommendationLabel, recommendationText);
 
+    const strictNotice = document.createElement("div");
+    strictNotice.style.margin = "0 0 16px";
+    strictNotice.style.padding = "10px 12px";
+    strictNotice.style.borderRadius = "10px";
+    strictNotice.style.background = "rgba(15, 23, 42, 0.42)";
+    strictNotice.style.border = "1px solid rgba(254, 202, 202, 0.38)";
+    strictNotice.style.color = "#fef2f2";
+    strictNotice.style.fontWeight = "600";
+    strictNotice.style.lineHeight = "1.5";
+    strictNotice.textContent = "This page must close this tab or reload the page before you can continue. Direct access is blocked for your protection.";
+
     const actionRow = document.createElement("div");
     actionRow.style.display = "flex";
-    actionRow.style.gap = "12px";
+    actionRow.style.gap = "10px";
     actionRow.style.flexWrap = "wrap";
-    actionRow.style.marginTop = "10px";
+    actionRow.style.marginTop = "8px";
 
     const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.textContent = "Close tab";
-    closeButton.style.flex = "1 1 160px";
-    closeButton.style.padding = "12px 16px";
+    closeButton.style.flex = "1 1 150px";
+    closeButton.style.padding = "12px 14px";
     closeButton.style.borderRadius = "10px";
-    closeButton.style.border = "1px solid rgba(248, 113, 113, 0.5)";
+    closeButton.style.border = "1px solid rgba(254, 202, 202, 0.45)";
     closeButton.style.background = "#b91c1c";
     closeButton.style.color = "#fff";
     closeButton.style.fontWeight = "700";
@@ -176,38 +209,36 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       );
     });
 
-    const continueButton = document.createElement("button");
-    continueButton.type = "button";
-    continueButton.textContent = "Continue anyway";
-    continueButton.style.flex = "1 1 160px";
-    continueButton.style.padding = "12px 16px";
-    continueButton.style.borderRadius = "10px";
-    continueButton.style.border = "1px solid rgba(96, 165, 250, 0.6)";
-    continueButton.style.background = "#0f172a";
-    continueButton.style.color = "#e0f2fe";
-    continueButton.style.fontWeight = "700";
-    continueButton.style.cursor = "pointer";
-    continueButton.addEventListener("click", () => {
+    const reloadButton = document.createElement("button");
+    reloadButton.type = "button";
+    reloadButton.textContent = "Reload page";
+    reloadButton.style.flex = "1 1 150px";
+    reloadButton.style.padding = "12px 14px";
+    reloadButton.style.borderRadius = "10px";
+    reloadButton.style.border = "1px solid rgba(248, 250, 252, 0.5)";
+    reloadButton.style.background = "rgba(15, 23, 42, 0.72)";
+    reloadButton.style.color = "#f8fafc";
+    reloadButton.style.fontWeight = "700";
+    reloadButton.style.cursor = "pointer";
+    reloadButton.addEventListener("click", () => {
       try {
-        sessionStorage.setItem("secureBrowser.riskLockdownAllowed", "true");
+        window.location.reload();
       } catch {
-        // Ignore storage failures and still allow the user to continue.
+        chrome.runtime.sendMessage(
+          { type: MESSAGE_TYPES.RISK_LOCKDOWN_ACTION, action: "reload", tabId: payload.tabId },
+          () => void chrome.runtime.lastError,
+        );
       }
-      hideRiskLockdown();
-      chrome.runtime.sendMessage(
-        { type: MESSAGE_TYPES.RISK_LOCKDOWN_ACTION, action: "continue", tabId: payload.tabId },
-        () => void chrome.runtime.lastError,
-      );
     });
 
     const ignoreButton = document.createElement("button");
     ignoreButton.type = "button";
     ignoreButton.textContent = "Ignore for this site";
-    ignoreButton.style.flex = "1 1 160px";
-    ignoreButton.style.padding = "12px 16px";
+    ignoreButton.style.flex = "1 1 100%";
+    ignoreButton.style.padding = "10px 12px";
     ignoreButton.style.borderRadius = "10px";
-    ignoreButton.style.border = "1px solid rgba(148, 163, 184, 0.5)";
-    ignoreButton.style.background = "#1e293b";
+    ignoreButton.style.border = "1px solid rgba(148, 163, 184, 0.55)";
+    ignoreButton.style.background = "rgba(15, 23, 42, 0.5)";
     ignoreButton.style.color = "#e2e8f0";
     ignoreButton.style.fontWeight = "600";
     ignoreButton.style.cursor = "pointer";
@@ -221,25 +252,27 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     });
 
     const footer = document.createElement("p");
-    footer.textContent = "This is a protection overlay. You may choose to continue only if you explicitly trust the page.";
-    footer.style.margin = "0";
-    footer.style.color = "#cbd5e1";
+    footer.textContent = "This is a protection warning from Secure Browser. You must close this tab or reload the page before continuing.";
+    footer.style.margin = "10px 0 0";
+    footer.style.color = "#ffe4e6";
     footer.style.fontSize = "12px";
     footer.style.lineHeight = "1.5";
 
-    actionRow.append(closeButton, continueButton, ignoreButton);
-    panel.append(title, description, reasonsList, recommendation, actionRow, footer);
+    actionRow.append(closeButton, reloadButton, ignoreButton);
+    panel.append(badge, title, description, reasonsList, recommendation, strictNotice, actionRow, footer);
     overlay.appendChild(panel);
 
     const rootNode = document.body || document.documentElement;
     if (rootNode) {
       previousBodyPointerEvents = rootNode.style.pointerEvents || "";
       rootNode.style.pointerEvents = "none";
+      rootNode.style.userSelect = "none";
     }
 
     previousDocumentOverflow = document.documentElement.style.overflow || "";
     document.documentElement.style.overflow = "hidden";
     document.documentElement.style.pointerEvents = "none";
+    document.documentElement.style.filter = "saturate(0.65) brightness(0.85)";
     document.documentElement.appendChild(overlay);
     currentRiskOverlay = overlay;
   }
@@ -282,10 +315,12 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
 
     if (document.body) {
       document.body.style.pointerEvents = previousBodyPointerEvents;
+      document.body.style.userSelect = "";
     }
 
     document.documentElement.style.pointerEvents = "";
     document.documentElement.style.overflow = previousDocumentOverflow;
+    document.documentElement.style.filter = "";
     currentRiskOverlay = null;
   }
 
