@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
+import { CheckCircle2, LayoutGrid, Settings2, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import ThreatDecisionTimeline from "./ThreatDecisionTimeline";
 import { loadUserRiskPolicy, saveUserRiskPolicy } from "../lib/policy/userRiskPolicy.js";
 
@@ -82,6 +82,33 @@ export default function PolicyDashboard() {
     setWarnThreshold(defaults.warnThreshold);
   };
 
+  const tabs = [
+    { id: "overview", label: "Overview", icon: LayoutGrid },
+    { id: "controls", label: "Controls", icon: Settings2 },
+    { id: "matrix", label: "Trust matrix", icon: ShieldCheck },
+  ];
+
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const overviewStats = useMemo(() => {
+    const coverage = Math.max(56, Math.min(97, 100 - blockList.length * 4 - Math.max(0, 75 - riskThreshold) * 0.62));
+    const coverCount = Math.min(allowList.length, 8);
+    const watchCount = Math.min(blockList.length, 8);
+
+    return {
+      coverage: Math.round(coverage),
+      trustedCount: coverCount,
+      watchCount,
+      activeState: validation.hasIssues ? "Needs review" : "Healthy",
+    };
+  }, [allowList.length, blockList.length, riskThreshold, validation.hasIssues]);
+
+  const matrixRows = useMemo(() => {
+    const trusted = allowList.slice(0, 12).map((entry) => ({ name: entry, state: "trusted", tag: "Allow" }));
+    const blocked = blockList.slice(0, 12).map((entry) => ({ name: entry, state: "blocked", tag: "Block" }));
+    return [...trusted, ...blocked];
+  }, [allowList, blockList]);
+
   return (
     <section className="security-panel policy-panel" aria-label="User policy dashboard">
       <div className="panel-header policy-header">
@@ -117,70 +144,158 @@ export default function PolicyDashboard() {
         </div>
       </div>
 
-      <div className="policy-profile-grid">
-        <div className="profile-card">
-          <span className="field-label">Policy profile</span>
-          <div className="policy-profile-buttons">
-            <button type="button" className="profile-button" onClick={() => applyProfile("lenient")}>Lenient</button>
-            <button type="button" className="profile-button active" onClick={() => applyProfile("balanced")}>Balanced</button>
-            <button type="button" className="profile-button" onClick={() => applyProfile("strict")}>Strict</button>
-          </div>
-        </div>
-
-        <div className="profile-card">
-          <span className="field-label">Policy health</span>
-          <div className={`policy-status ${validation.hasIssues ? "warning" : "healthy"}`}>
-            {validation.hasIssues ? "Review recommended" : "Healthy and active"}
-          </div>
-        </div>
+      <div className="policy-console-tabs" aria-label="Policy console tabs">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className={`policy-tab ${activeTab === id ? "active" : ""}`}
+            onClick={() => setActiveTab(id)}
+          >
+            <Icon size={14} />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {validation.hasIssues && (
-        <div className="policy-validation">
-          {validation.invalidAllow > 0 && <span>Trusted list includes invalid entries</span>}
-          {validation.invalidBlock > 0 && <span>Blocked list includes invalid entries</span>}
-          {validation.duplicateAllow > 0 && <span>Duplicate trusted domains detected</span>}
-          {validation.duplicateBlock > 0 && <span>Duplicate blocked domains detected</span>}
-          {riskThreshold <= warnThreshold && <span>Block threshold should be above warn threshold</span>}
-        </div>
+      {activeTab === "overview" && (
+        <>
+          <div className="policy-profile-grid">
+            <div className="profile-card">
+              <span className="field-label">Policy profile</span>
+              <div className="policy-profile-buttons">
+                <button type="button" className={`profile-button ${summary.status === "Lenient" ? "active" : ""}`} onClick={() => applyProfile("lenient")}>Lenient</button>
+                <button type="button" className={`profile-button ${summary.status === "Balanced" ? "active" : ""}`} onClick={() => applyProfile("balanced")}>Balanced</button>
+                <button type="button" className={`profile-button ${summary.status === "Strict" ? "active" : ""}`} onClick={() => applyProfile("strict")}>Strict</button>
+              </div>
+            </div>
+
+            <div className="profile-card">
+              <span className="field-label">Policy health</span>
+              <div className={`policy-status ${validation.hasIssues ? "warning" : "healthy"}`}>
+                {validation.hasIssues ? "Review recommended" : "Healthy and active"}
+              </div>
+            </div>
+          </div>
+
+          <div className="overview-grid">
+            <div className="overview-card">
+              <span className="field-label">Policy coverage</span>
+              <strong>{overviewStats.coverage}%</strong>
+              <small>Protected browser posture</small>
+            </div>
+            <div className="overview-card">
+              <span className="field-label">Trusted domains</span>
+              <strong>{overviewStats.trustedCount}</strong>
+              <small>Always allow-listed</small>
+            </div>
+            <div className="overview-card" aria-live="polite">
+              <span className="field-label">Watchlist</span>
+              <strong>{overviewStats.watchCount}</strong>
+              <small>Explicitly blocked</small>
+            </div>
+            <div className="overview-card">
+              <span className="field-label">Runtime state</span>
+              <strong>{overviewStats.activeState}</strong>
+              <small>Current security posture</small>
+            </div>
+          </div>
+
+          <div className="state-callout">
+            <div className="state-callout-icon"><CheckCircle2 size={18} /></div>
+            <div>
+              <strong>Security baseline is {validation.hasIssues ? "monitoring exceptions" : "operating normally"}</strong>
+              <p>{validation.hasIssues ? "Review invalid entries or threshold mismatch before saving the policy." : "Browser protection is active and using the current user-defined trust baseline."}</p>
+            </div>
+          </div>
+        </>
       )}
 
-      <div className="policy-grid">
-        <label className="field-block policy-field">
-          <span className="field-label"><ShieldCheck size={14} /> Trusted domains</span>
-          <textarea className="policy-textarea" value={draft} onChange={(event) => setDraft(event.target.value)} rows={6} />
-          <div className="chip-list">
-            {allowList.length === 0 ? <span className="chip empty">No trusted domains</span> : allowList.slice(0, 8).map((entry) => <span key={`allow-${entry}`} className="chip approved">{entry}</span>)}
+      {activeTab === "controls" && (
+        <>
+          {validation.hasIssues && (
+            <div className="policy-validation">
+              {validation.invalidAllow > 0 && <span>Trusted list includes invalid entries</span>}
+              {validation.invalidBlock > 0 && <span>Blocked list includes invalid entries</span>}
+              {validation.duplicateAllow > 0 && <span>Duplicate trusted domains detected</span>}
+              {validation.duplicateBlock > 0 && <span>Duplicate blocked domains detected</span>}
+              {riskThreshold <= warnThreshold && <span>Block threshold should be above warn threshold</span>}
+            </div>
+          )}
+
+          <div className="policy-grid">
+            <label className="field-block policy-field">
+              <span className="field-label"><ShieldCheck size={14} /> Trusted domains</span>
+              <textarea className="policy-textarea" value={draft} onChange={(event) => setDraft(event.target.value)} rows={6} />
+              <div className="chip-list">
+                {allowList.length === 0 ? <span className="chip empty">No trusted domains</span> : allowList.slice(0, 8).map((entry) => <span key={`allow-${entry}`} className="chip approved">{entry}</span>)}
+              </div>
+            </label>
+
+            <label className="field-block policy-field">
+              <span className="field-label"><ShieldX size={14} /> Blocked domains</span>
+              <textarea className="policy-textarea" value={blocked} onChange={(event) => setBlocked(event.target.value)} rows={6} />
+              <div className="chip-list">
+                {blockList.length === 0 ? <span className="chip empty">No blocked domains</span> : blockList.slice(0, 8).map((entry) => <span key={`block-${entry}`} className="chip blocked">{entry}</span>)}
+              </div>
+            </label>
           </div>
-        </label>
 
-        <label className="field-block policy-field">
-          <span className="field-label"><ShieldX size={14} /> Blocked domains</span>
-          <textarea className="policy-textarea" value={blocked} onChange={(event) => setBlocked(event.target.value)} rows={6} />
-          <div className="chip-list">
-            {blockList.length === 0 ? <span className="chip empty">No blocked domains</span> : blockList.slice(0, 8).map((entry) => <span key={`block-${entry}`} className="chip blocked">{entry}</span>)}
+          <div className="policy-range-grid">
+            <label className="field-block range-field">
+              <span className="field-label">Block threshold: {riskThreshold}%</span>
+              <input className="policy-range" type="range" min="20" max="95" value={riskThreshold} onChange={(event) => setRiskThreshold(Number(event.target.value))} />
+              <div className="range-scale"><span>20%</span><span>95%</span></div>
+            </label>
+
+            <label className="field-block range-field">
+              <span className="field-label">Warn threshold: {warnThreshold}%</span>
+              <input className="policy-range" type="range" min="5" max="70" value={warnThreshold} onChange={(event) => setWarnThreshold(Number(event.target.value))} />
+              <div className="range-scale"><span>5%</span><span>70%</span></div>
+            </label>
           </div>
-        </label>
-      </div>
 
-      <div className="policy-range-grid">
-        <label className="field-block range-field">
-          <span className="field-label">Block threshold: {riskThreshold}%</span>
-          <input className="policy-range" type="range" min="20" max="95" value={riskThreshold} onChange={(event) => setRiskThreshold(Number(event.target.value))} />
-          <div className="range-scale"><span>20%</span><span>95%</span></div>
-        </label>
+          <div className="policy-actions">
+            <button type="button" className="button-secondary policy-ghost" onClick={resetDefaults}>Reset defaults</button>
+            <button type="button" className="button-primary" onClick={save}>Save policy</button>
+          </div>
+        </>
+      )}
 
-        <label className="field-block range-field">
-          <span className="field-label">Warn threshold: {warnThreshold}%</span>
-          <input className="policy-range" type="range" min="5" max="70" value={warnThreshold} onChange={(event) => setWarnThreshold(Number(event.target.value))} />
-          <div className="range-scale"><span>5%</span><span>70%</span></div>
-        </label>
-      </div>
+      {activeTab === "matrix" && (
+        <div className="matrix-panel">
+          <div className="matrix-grid">
+            <div className="matrix-card">
+              <div className="matrix-header">
+                <strong>Trusted domains</strong>
+                <span>{allowList.length}</span>
+              </div>
+              <ul>
+                {allowList.length === 0 ? <li className="matrix-empty">No trusted domains configured</li> : allowList.map((entry) => <li key={`matrix-allow-${entry}`}><span>{entry}</span><em>Allow</em></li>)}
+              </ul>
+            </div>
 
-      <div className="policy-actions">
-        <button type="button" className="button-secondary policy-ghost" onClick={resetDefaults}>Reset defaults</button>
-        <button type="button" className="button-primary" onClick={save}>Save policy</button>
-      </div>
+            <div className="matrix-card danger-card">
+              <div className="matrix-header">
+                <strong>Blocked domains</strong>
+                <span>{blockList.length}</span>
+              </div>
+              <ul>
+                {blockList.length === 0 ? <li className="matrix-empty">No blocked domains configured</li> : blockList.map((entry) => <li key={`matrix-block-${entry}`}><span>{entry}</span><em>Block</em></li>)}
+              </ul>
+            </div>
+          </div>
+
+          <div className="matrix-summary">
+            {matrixRows.slice(0, 8).map((entry) => (
+              <div key={`${entry.state}-${entry.name}`} className={`matrix-tag ${entry.state}`}>
+                <span>{entry.name}</span>
+                <em>{entry.tag}</em>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <ThreatDecisionTimeline />
     </section>
