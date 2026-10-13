@@ -4,8 +4,7 @@
   "description": "Evidence-driven browsing safety assistant.",
   "version": "0.1.0",
   "action": {
-    "default_title": "Secure Browser",
-    "default_popup": "popup.html"
+    "default_title": "Secure Browser"
   },
   "background": {
     "service_worker": "assets/serviceWorker.js",

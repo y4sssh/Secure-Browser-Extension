@@ -4,6 +4,17 @@ import { setupScannerService } from "./scannerService";
 setupMessageRouter();
 setupScannerService();
 
+chrome.action.onClicked.addListener((tab) => {
+	const targetTabId = tab?.id ?? 0;
+	const dashboardUrl = chrome.runtime.getURL(
+		`dashboard.html${targetTabId ? `?tabId=${targetTabId}&source=toolbar` : "?source=toolbar"}`,
+	);
+
+	chrome.tabs.create({ url: dashboardUrl, active: true }, () => {
+		void chrome.runtime.lastError;
+	});
+});
+
 // Network monitoring: listen for messages from content scripts to record blocked requests
 const BLOCKED_REQUESTS_KEY = "secureBrowser.blockedRequests";
 
