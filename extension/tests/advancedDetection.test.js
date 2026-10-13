@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { scoreVisualBrandMismatch } from "../src/lib/scoring/visualBrandMismatch.js";
 import { runHybridRiskModel } from "../src/lib/scoring/modelPipeline.js";
-import { loadUserRiskPolicy, evaluateUserRiskPolicy } from "../src/lib/policy/userRiskPolicy.js";
+import { loadUserRiskPolicy, evaluateUserRiskPolicy, saveUserRiskPolicy } from "../src/lib/policy/userRiskPolicy.js";
 
 test("visual brand mismatch detector catches impersonation patterns", () => {
   const result = scoreVisualBrandMismatch({
@@ -66,4 +66,24 @@ test("user policy engine blocks malicious domains and protects trusted brands", 
   assert.equal(blocked.action, "block");
   assert.equal(trusted.action, "allow");
   assert.equal(risky.action, "warn");
+});
+
+test("user policy save tolerates unavailable or blocked storage", () => {
+  const badStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {
+      throw new Error("Storage unavailable");
+    },
+  };
+
+  assert.doesNotThrow(() => {
+    saveUserRiskPolicy({
+      allowList: ["login.microsoftonline.com"],
+      blockList: ["evil-login.example"],
+      riskThreshold: 80,
+      warnThreshold: 30,
+    }, badStorage);
+  });
 });

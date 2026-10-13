@@ -3,8 +3,16 @@ import { ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import ThreatDecisionTimeline from "./ThreatDecisionTimeline";
 import { loadUserRiskPolicy, saveUserRiskPolicy } from "../lib/policy/userRiskPolicy.js";
 
+function getSafeLocalStorage() {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function PolicyDashboard() {
-  const [policy, setPolicy] = useState(() => loadUserRiskPolicy());
+  const [policy, setPolicy] = useState(() => loadUserRiskPolicy({}, getSafeLocalStorage()));
   const [draft, setDraft] = useState(policy.allowList.join("\n"));
   const [blocked, setBlocked] = useState(policy.blockList.join("\n"));
   const [riskThreshold, setRiskThreshold] = useState(policy.riskThreshold);
@@ -26,7 +34,7 @@ export default function PolicyDashboard() {
       warnThreshold: Number(warnThreshold),
     };
 
-    const normalized = saveUserRiskPolicy(nextPolicy, globalThis.localStorage);
+    const normalized = saveUserRiskPolicy(nextPolicy, getSafeLocalStorage());
     setPolicy(normalized);
   };
 

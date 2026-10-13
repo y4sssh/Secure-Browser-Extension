@@ -2,11 +2,19 @@ import React, { useEffect, useState } from "react";
 import { Activity, Clock3, Download, ShieldAlert, ShieldCheck } from "lucide-react";
 import { loadThreatDecisionHistory } from "../lib/policy/userRiskPolicy.js";
 
+function getSafeLocalStorage() {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ThreatDecisionTimeline() {
-  const [history, setHistory] = useState(() => loadThreatDecisionHistory(globalThis.localStorage));
+  const [history, setHistory] = useState(() => loadThreatDecisionHistory(getSafeLocalStorage()));
 
   useEffect(() => {
-    setHistory(loadThreatDecisionHistory(globalThis.localStorage));
+    setHistory(loadThreatDecisionHistory(getSafeLocalStorage()));
   }, []);
 
   const exportHistory = () => {

@@ -6,28 +6,42 @@ const DEFAULT_POLICY = {
 };
 
 export function loadUserRiskPolicy(overrides = {}, storage = null) {
-  const resolved = storage && typeof storage.getItem === "function" ? readStoredPolicy(storage) : {};
+  const resolved = getSafeStorage(storage)?.getItem ? readStoredPolicy(storage) : {};
   return normalizePolicy({ ...DEFAULT_POLICY, ...resolved, ...overrides });
 }
 
 export function saveUserRiskPolicy(policy = {}, storage = null) {
   const normalized = normalizePolicy(policy);
-  if (storage && typeof storage.setItem === "function") {
-    storage.setItem("secureBrowser.userRiskPolicy", JSON.stringify(normalized));
+  const safeStorage = getSafeStorage(storage);
+
+  if (safeStorage && typeof safeStorage.setItem === "function") {
+    try {
+      safeStorage.setItem("secureBrowser.userRiskPolicy", JSON.stringify(normalized));
+    } catch {
+      // Storage may be blocked or unavailable in private mode; keep the in-memory policy active.
+    }
   }
+
   return normalized;
 }
 
 export function loadThreatDecisionHistory(storage = null) {
-  const resolved = storage && typeof storage.getItem === "function" ? readStoredThreatDecisions(storage) : [];
+  const resolved = getSafeStorage(storage)?.getItem ? readStoredThreatDecisions(storage) : [];
   return Array.isArray(resolved) ? resolved.slice(0, 25) : [];
 }
 
 export function saveThreatDecisionHistory(history = [], storage = null) {
   const normalized = Array.isArray(history) ? history.slice(0, 25) : [];
-  if (storage && typeof storage.setItem === "function") {
-    storage.setItem("secureBrowser.threatDecisionHistory", JSON.stringify(normalized));
+  const safeStorage = getSafeStorage(storage);
+
+  if (safeStorage && typeof safeStorage.setItem === "function") {
+    try {
+      safeStorage.setItem("secureBrowser.threatDecisionHistory", JSON.stringify(normalized));
+    } catch {
+      // Ignore storage write failures so the dashboard still works in restricted contexts.
+    }
   }
+
   return normalized;
 }
 
@@ -133,6 +147,22 @@ function readStoredThreatDecisions(storage) {
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
+  }
+}
+
+function getSafeStorage(storage = null) {
+  if (!storage || typeof storage !== "object") {
+    return null;
+  }
+
+  try {
+    if (typeof storage.getItem !== "function") {
+      return null;
+    }
+    storage.getItem("secureBrowser.storageCheck");
+    return storage;
+  } catch {
+    return null;
   }
 }
 
