@@ -84,6 +84,30 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       ? payload.reasons.slice(0, 4)
       : ["This page shows signs of phishing, fake login behavior, or credential theft risk."];
 
+    const topWarningBar = document.createElement("div");
+    topWarningBar.id = "secure-browser-risk-topbar";
+    topWarningBar.style.position = "fixed";
+    topWarningBar.style.top = "0";
+    topWarningBar.style.left = "0";
+    topWarningBar.style.right = "0";
+    topWarningBar.style.zIndex = "2147483647";
+    topWarningBar.style.height = "56px";
+    topWarningBar.style.background = "linear-gradient(90deg, rgba(127, 29, 29, 0.98), rgba(69, 10, 10, 0.98))";
+    topWarningBar.style.borderBottom = "1px solid rgba(254, 202, 202, 0.5)";
+    topWarningBar.style.boxShadow = "0 10px 24px rgba(2, 6, 23, 0.26)";
+    topWarningBar.style.display = "flex";
+    topWarningBar.style.alignItems = "center";
+    topWarningBar.style.justifyContent = "center";
+    topWarningBar.style.padding = "0 16px";
+    topWarningBar.style.color = "#fff7ed";
+    topWarningBar.style.fontFamily = "system-ui, sans-serif";
+    topWarningBar.style.fontSize = "13px";
+    topWarningBar.style.fontWeight = "800";
+    topWarningBar.style.letterSpacing = "0.04em";
+    topWarningBar.style.textTransform = "uppercase";
+    topWarningBar.textContent = "Secure Browser blocked this page";
+    document.documentElement.appendChild(topWarningBar);
+
     const toast = document.createElement("div");
     toast.id = "secure-browser-risk-toast";
     toast.setAttribute("role", "status");
@@ -102,6 +126,10 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     toast.style.fontFamily = "system-ui, sans-serif";
     toast.style.pointerEvents = "auto";
     toast.style.backdropFilter = "blur(8px)";
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(-10px)";
+    toast.style.transition = "opacity 180ms ease, transform 180ms ease";
+    toast.style.animation = "secureBrowserToastIn 180ms ease forwards";
 
     const toastTitle = document.createElement("div");
     toastTitle.textContent = "Secure Browser blocked this page";
@@ -119,11 +147,31 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
 
     toast.append(toastTitle, toastBody);
     document.documentElement.appendChild(toast);
-    window.setTimeout(() => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
+
+    const dismissToast = () => {
+      toast.style.animation = "secureBrowserToastOut 180ms ease forwards";
+      window.setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 180);
+    };
+
+    window.setTimeout(dismissToast, 8000);
+
+    const styleTag = document.createElement("style");
+    styleTag.setAttribute("data-secure-browser-risk", "true");
+    styleTag.textContent = `
+      @keyframes secureBrowserToastIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
-    }, 8000);
+      @keyframes secureBrowserToastOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-10px); }
+      }
+    `;
+    document.documentElement.appendChild(styleTag);
 
     const overlay = document.createElement("div");
     overlay.id = "secure-browser-risk-lockdown";
@@ -415,6 +463,22 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     document.documentElement.style.pointerEvents = "";
     document.documentElement.style.overflow = previousDocumentOverflow;
     document.documentElement.style.filter = "";
+
+    const toastEl = document.getElementById("secure-browser-risk-toast");
+    if (toastEl && toastEl.parentNode) {
+      toastEl.parentNode.removeChild(toastEl);
+    }
+
+    const topBarEl = document.getElementById("secure-browser-risk-topbar");
+    if (topBarEl && topBarEl.parentNode) {
+      topBarEl.parentNode.removeChild(topBarEl);
+    }
+
+    const inlineStyle = document.querySelector("style[data-secure-browser-risk]");
+    if (inlineStyle && inlineStyle.parentNode) {
+      inlineStyle.parentNode.removeChild(inlineStyle);
+    }
+
     currentRiskOverlay = null;
   }
 
