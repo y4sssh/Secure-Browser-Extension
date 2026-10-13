@@ -18,6 +18,9 @@ export default function PolicyDashboard() {
   const [riskThreshold, setRiskThreshold] = useState(policy.riskThreshold);
   const [warnThreshold, setWarnThreshold] = useState(policy.warnThreshold);
 
+  const allowList = useMemo(() => draft.split(/\n|,/).map((entry) => entry.trim()).filter(Boolean), [draft]);
+  const blockList = useMemo(() => blocked.split(/\n|,/).map((entry) => entry.trim()).filter(Boolean), [blocked]);
+
   const summary = useMemo(() => {
     return {
       allowCount: policy.allowList.length,
@@ -28,10 +31,26 @@ export default function PolicyDashboard() {
 
   const statusTone = summary.status === "Strict" ? "score-risky" : summary.status === "Balanced" ? "score-caution" : "score-trusted";
 
+  const validation = useMemo(() => {
+    const normalizedAllow = allowList.filter((entry) => !entry.includes(" ") && /^[a-z0-9.-]+$/i.test(entry));
+    const invalidAllow = allowList.length - normalizedAllow.length;
+    const invalidBlock = blockList.filter((entry) => entry.includes(" ") || !/^[a-z0-9.-]+$/i.test(entry)).length;
+    const duplicateAllow = allowList.filter((entry, index, values) => values.indexOf(entry) !== index).length;
+    const duplicateBlock = blockList.filter((entry, index, values) => values.indexOf(entry) !== index).length;
+
+    return {
+      invalidAllow,
+      invalidBlock,
+      duplicateAllow,
+      duplicateBlock,
+      hasIssues: invalidAllow > 0 || invalidBlock > 0 || duplicateAllow > 0 || duplicateBlock > 0 || riskThreshold <= warnThreshold,
+    };
+  }, [allowList, blockList, riskThreshold, warnThreshold]);
+
   const save = () => {
     const nextPolicy = {
-      allowList: draft.split(/\n|,/).map((entry) => entry.trim()).filter(Boolean),
-      blockList: blocked.split(/\n|,/).map((entry) => entry.trim()).filter(Boolean),
+      allowList: allowList,
+      blockList: blockList,
       riskThreshold: Number(riskThreshold),
       warnThreshold: Number(warnThreshold),
     };
@@ -40,12 +59,36 @@ export default function PolicyDashboard() {
     setPolicy(normalized);
   };
 
+  const applyProfile = (profile) => {
+    if (profile === "strict") {
+      setRiskThreshold(80);
+      setWarnThreshold(35);
+      return;
+    }
+    if (profile === "balanced") {
+      setRiskThreshold(70);
+      setWarnThreshold(25);
+      return;
+    }
+    setRiskThreshold(55);
+    setWarnThreshold(15);
+  };
+
+  const resetDefaults = () => {
+    const defaults = loadUserRiskPolicy({}, getSafeLocalStorage());
+    setDraft(defaults.allowList.join("\n"));
+    setBlocked(defaults.blockList.join("\n"));
+    setRiskThreshold(defaults.riskThreshold);
+    setWarnThreshold(defaults.warnThreshold);
+  };
+
   return (
     <section className="security-panel policy-panel" aria-label="User policy dashboard">
       <div className="panel-header policy-header">
         <div className="policy-header-copy">
           <span className="eyebrow">User policy</span>
           <h3>Trusted site controls</h3>
+          <p>Adaptive risk thresholds and manual trust overrides for browser protection.</p>
         </div>
         <span className={`score-pill ${statusTone}`}>{summary.status}</span>
       </div>
@@ -74,15 +117,49 @@ export default function PolicyDashboard() {
         </div>
       </div>
 
+      <div className="policy-profile-grid">
+        <div className="profile-card">
+          <span className="field-label">Policy profile</span>
+          <div className="policy-profile-buttons">
+            <button type="button" className="profile-button" onClick={() => applyProfile("lenient")}>Lenient</button>
+            <button type="button" className="profile-button active" onClick={() => applyProfile("balanced")}>Balanced</button>
+            <button type="button" className="profile-button" onClick={() => applyProfile("strict")}>Strict</button>
+          </div>
+        </div>
+
+        <div className="profile-card">
+          <span className="field-label">Policy health</span>
+          <div className={`policy-status ${validation.hasIssues ? "warning" : "healthy"}`}>
+            {validation.hasIssues ? "Review recommended" : "Healthy and active"}
+          </div>
+        </div>
+      </div>
+
+      {validation.hasIssues && (
+        <div className="policy-validation">
+          {validation.invalidAllow > 0 && <span>Trusted list includes invalid entries</span>}
+          {validation.invalidBlock > 0 && <span>Blocked list includes invalid entries</span>}
+          {validation.duplicateAllow > 0 && <span>Duplicate trusted domains detected</span>}
+          {validation.duplicateBlock > 0 && <span>Duplicate blocked domains detected</span>}
+          {riskThreshold <= warnThreshold && <span>Block threshold should be above warn threshold</span>}
+        </div>
+      )}
+
       <div className="policy-grid">
         <label className="field-block policy-field">
           <span className="field-label"><ShieldCheck size={14} /> Trusted domains</span>
           <textarea className="policy-textarea" value={draft} onChange={(event) => setDraft(event.target.value)} rows={6} />
+          <div className="chip-list">
+            {allowList.length === 0 ? <span className="chip empty">No trusted domains</span> : allowList.slice(0, 8).map((entry) => <span key={`allow-${entry}`} className="chip approved">{entry}</span>)}
+          </div>
         </label>
 
         <label className="field-block policy-field">
           <span className="field-label"><ShieldX size={14} /> Blocked domains</span>
           <textarea className="policy-textarea" value={blocked} onChange={(event) => setBlocked(event.target.value)} rows={6} />
+          <div className="chip-list">
+            {blockList.length === 0 ? <span className="chip empty">No blocked domains</span> : blockList.slice(0, 8).map((entry) => <span key={`block-${entry}`} className="chip blocked">{entry}</span>)}
+          </div>
         </label>
       </div>
 
@@ -101,6 +178,7 @@ export default function PolicyDashboard() {
       </div>
 
       <div className="policy-actions">
+        <button type="button" className="button-secondary policy-ghost" onClick={resetDefaults}>Reset defaults</button>
         <button type="button" className="button-primary" onClick={save}>Save policy</button>
       </div>
 
