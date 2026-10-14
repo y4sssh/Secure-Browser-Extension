@@ -27,30 +27,39 @@ const RECENT_EVIDENCE_KEY = "secureBrowser.recentPageEvidence";
 const navigationByTab = new Map();
 
 export function setupMessageRouter() {
-  chrome.runtime.onInstalled.addListener(() => {
-    chrome.storage.local.get({ [RECENT_EVIDENCE_KEY]: [] }, () => {
-      void chrome.runtime.lastError;
-    });
-  });
-
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (!message?.type) {
-      return false;
-    }
-
-    handleMessage(message, sender)
-      .then((response) => sendResponse(response))
-      .catch((error) => {
-        sendResponse({ ok: false, error: error.message });
+  if (typeof chrome?.runtime?.onInstalled?.addListener === "function") {
+    chrome.runtime.onInstalled.addListener(() => {
+      chrome.storage.local.get({ [RECENT_EVIDENCE_KEY]: [] }, () => {
+        void chrome.runtime.lastError;
       });
+    });
+  }
 
-    return true;
-  });
+  if (typeof chrome?.runtime?.onMessage?.addListener === "function") {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (!message?.type) {
+        return false;
+      }
 
-  chrome.tabs.onUpdated.addListener(handleTabUpdated);
-  chrome.tabs.onRemoved.addListener((tabId) => {
-    navigationByTab.delete(tabId);
-  });
+      handleMessage(message, sender)
+        .then((response) => sendResponse(response))
+        .catch((error) => {
+          sendResponse({ ok: false, error: error.message });
+        });
+
+      return true;
+    });
+  }
+
+  if (typeof chrome?.tabs?.onUpdated?.addListener === "function") {
+    chrome.tabs.onUpdated.addListener(handleTabUpdated);
+  }
+
+  if (typeof chrome?.tabs?.onRemoved?.addListener === "function") {
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      navigationByTab.delete(tabId);
+    });
+  }
 }
 
 async function handleMessage(message, sender) {
@@ -85,11 +94,8 @@ async function handleMessage(message, sender) {
 
       if (message.action === "continue") {
         clearRiskLockdownBadge(tabId);
-        try {
-          sessionStorage.setItem("secureBrowser.riskLockdownAllowed", "true");
-        } catch {
-          // Ignore storage failures; the page overlay is still removed locally.
-        }
+        // The content script owns the per-page session override because
+        // service workers do not have page sessionStorage.
         return { ok: true, continued: true };
       }
 

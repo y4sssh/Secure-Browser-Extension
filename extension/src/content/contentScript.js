@@ -419,6 +419,68 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     reloadConfirmActions.append(confirmReloadButton, keepBlockedButton);
     reloadConfirm.append(reloadConfirmText, reloadConfirmActions);
 
+    const continueConfirm = document.createElement("div");
+    continueConfirm.style.display = "none";
+    continueConfirm.style.margin = "0 0 14px";
+    continueConfirm.style.padding = "10px 12px";
+    continueConfirm.style.borderRadius = "10px";
+    continueConfirm.style.background = "rgba(69, 10, 10, 0.74)";
+    continueConfirm.style.border = "1px solid rgba(254, 202, 202, 0.52)";
+
+    const continueConfirmText = document.createElement("p");
+    continueConfirmText.textContent = "Continue only if you trust this site. The page will be unfrozen for this tab until it is reloaded or closed.";
+    continueConfirmText.style.margin = "0";
+    continueConfirmText.style.lineHeight = "1.5";
+    continueConfirmText.style.color = "#fff7ed";
+
+    const continueConfirmActions = document.createElement("div");
+    continueConfirmActions.style.display = "flex";
+    continueConfirmActions.style.gap = "10px";
+    continueConfirmActions.style.marginTop = "10px";
+    continueConfirmActions.style.flexWrap = "wrap";
+
+    const confirmContinueButton = document.createElement("button");
+    confirmContinueButton.type = "button";
+    confirmContinueButton.textContent = "I understand, continue";
+    confirmContinueButton.style.flex = "1 1 170px";
+    confirmContinueButton.style.padding = "10px 12px";
+    confirmContinueButton.style.borderRadius = "10px";
+    confirmContinueButton.style.border = "1px solid rgba(34, 197, 94, 0.5)";
+    confirmContinueButton.style.background = "#14532d";
+    confirmContinueButton.style.color = "#ecfdf5";
+    confirmContinueButton.style.fontWeight = "700";
+    confirmContinueButton.style.cursor = "pointer";
+    confirmContinueButton.addEventListener("click", () => {
+      try {
+        sessionStorage.setItem("secureBrowser.riskLockdownAllowed", "true");
+      } catch {
+        // The page can still be unfrozen if session storage is unavailable.
+      }
+      hideRiskLockdown();
+      chrome.runtime.sendMessage(
+        { type: MESSAGE_TYPES.RISK_LOCKDOWN_ACTION, action: "continue", tabId: payload.tabId },
+        () => void chrome.runtime.lastError,
+      );
+    });
+
+    const stayBlockedButton = document.createElement("button");
+    stayBlockedButton.type = "button";
+    stayBlockedButton.textContent = "Stay protected";
+    stayBlockedButton.style.flex = "1 1 140px";
+    stayBlockedButton.style.padding = "10px 12px";
+    stayBlockedButton.style.borderRadius = "10px";
+    stayBlockedButton.style.border = "1px solid rgba(148, 163, 184, 0.5)";
+    stayBlockedButton.style.background = "#0f172a";
+    stayBlockedButton.style.color = "#e2e8f0";
+    stayBlockedButton.style.fontWeight = "600";
+    stayBlockedButton.style.cursor = "pointer";
+    stayBlockedButton.addEventListener("click", () => {
+      continueConfirm.style.display = "none";
+    });
+
+    continueConfirmActions.append(confirmContinueButton, stayBlockedButton);
+    continueConfirm.append(continueConfirmText, continueConfirmActions);
+
     const strictNotice = document.createElement("div");
     strictNotice.style.margin = "0 0 16px";
     strictNotice.style.padding = "10px 12px";
@@ -428,7 +490,7 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     strictNotice.style.color = "#fef2f2";
     strictNotice.style.fontWeight = "600";
     strictNotice.style.lineHeight = "1.5";
-    strictNotice.textContent = "This page must close this tab or reload the page before you can continue. Direct access is blocked for your protection.";
+    strictNotice.textContent = "This page is frozen while Secure Browser protects you. You can close it, reload it, or explicitly choose to continue at your own risk.";
 
     const actionRow = document.createElement("div");
     actionRow.style.display = "flex";
@@ -469,6 +531,22 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       reloadConfirm.style.display = "block";
     });
 
+    const continueButton = document.createElement("button");
+    continueButton.type = "button";
+    continueButton.textContent = "Continue anyway";
+    continueButton.style.flex = "1 1 150px";
+    continueButton.style.padding = "12px 14px";
+    continueButton.style.borderRadius = "10px";
+    continueButton.style.border = "1px solid rgba(34, 197, 94, 0.5)";
+    continueButton.style.background = "#14532d";
+    continueButton.style.color = "#ecfdf5";
+    continueButton.style.fontWeight = "700";
+    continueButton.style.cursor = "pointer";
+    continueButton.addEventListener("click", () => {
+      continueConfirm.style.display = "block";
+      reloadConfirm.style.display = "none";
+    });
+
     const ignoreButton = document.createElement("button");
     ignoreButton.type = "button";
     ignoreButton.textContent = "Ignore for this site";
@@ -490,14 +568,14 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     });
 
     const footer = document.createElement("p");
-    footer.textContent = "This is a protection warning from Secure Browser. You must close this tab or reload the page before continuing.";
+    footer.textContent = "This is a protection warning from Secure Browser. Continuing requires your explicit confirmation and applies only to this page session.";
     footer.style.margin = "10px 0 0";
     footer.style.color = "#ffe4e6";
     footer.style.fontSize = "12px";
     footer.style.lineHeight = "1.5";
 
-    actionRow.append(closeButton, reloadButton, ignoreButton);
-    panel.append(badge, title, description, reasonsList, recommendation, reloadConfirm, strictNotice, actionRow, footer);
+    actionRow.append(closeButton, reloadButton, continueButton, ignoreButton);
+    panel.append(badge, title, description, reasonsList, recommendation, reloadConfirm, continueConfirm, strictNotice, actionRow, footer);
     overlay.appendChild(panel);
 
     const rootNode = document.body || document.documentElement;
@@ -658,101 +736,6 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
   // Expose a helper for other parts to show the explainability banner
   window.__secureBrowserShowExplain = (data) => renderExplainabilityBanner(data);
 
-  // Inject a page-level script to intercept fetch and XHR for monitoring/blocking
-  function injectNetworkInterceptor() {
-    try {
-      const script = document.createElement("script");
-      script.type = "text/javascript";
-      script.textContent = `(() => {
-        const BLOCK_KEY = 'secureBrowser_block_rules';
-        // Simple heuristic: block requests to suspicious paths containing keywords
-        const suspiciousKeywords = ['login', 'auth', 'steal', 'collect', 'token', 'verify', 'credential'];
-
-        function isSuspicious(url) {
-          try {
-            const u = new URL(url, location.href);
-            const p = (u.pathname + ' ' + u.search).toLowerCase();
-            return suspiciousKeywords.some(k => p.includes(k));
-          } catch { return false; }
-        }
-
-        // POST a message to page context consumers to notify of blocked attempts
-        function notifyBlocked(info) {
-          window.postMessage({ source: 'secureBrowser', type: 'networkBlocked', payload: info }, '*');
-        }
-
-        // Wrap fetch
-        const origFetch = window.fetch;
-        window.fetch = function(input, init) {
-          try {
-            const url = (typeof input === 'string') ? input : (input && input.url) || '';
-            const method = (init && init.method) || (input && input.method) || 'GET';
-            if (isSuspicious(url)) {
-              const info = { url, method, reason: 'suspicious path keyword' };
-              notifyBlocked(info);
-              // return a failed promise to emulate network block
-              return Promise.reject(new TypeError('Network request blocked by Secure Browser'));
-            }
-          } catch (e) {}
-          return origFetch.apply(this, arguments);
-        };
-
-        // Wrap XHR
-        const OrigXHR = window.XMLHttpRequest;
-        function WrappedXHR() {
-          const xr = new OrigXHR();
-          let _url = '';
-          let _method = '';
-          const origOpen = xr.open;
-          xr.open = function(method, url) {
-            try { _url = url; _method = method || 'GET'; } catch {}
-            return origOpen.apply(this, arguments);
-          };
-          const origSend = xr.send;
-          xr.send = function(body) {
-            try {
-              if (isSuspicious(_url)) {
-                notifyBlocked({ url: _url, method: _method, reason: 'suspicious path keyword' });
-                // abort and trigger error
-                try { this.abort(); } catch(e) {}
-                if (typeof this.onerror === 'function') {
-                  try { this.onerror(new Error('Network request blocked by Secure Browser')); } catch(e) {}
-                }
-                return;
-              }
-            } catch(e) {}
-            return origSend.apply(this, arguments);
-          };
-          return xr;
-        }
-        WrappedXHR.prototype = OrigXHR.prototype;
-        window.XMLHttpRequest = WrappedXHR;
-      })();`;
-
-      (document.head || document.documentElement).appendChild(script);
-      script.parentNode.removeChild(script);
-    } catch (e) {
-      // ignore injection failures
-    }
-  }
-
-  // Listen for page->content messages about blocked network attempts
-  window.addEventListener('message', (ev) => {
-    try {
-      if (!ev.data || ev.data.source !== 'secureBrowser' || ev.data.type !== 'networkBlocked') return;
-      const payload = ev.data.payload || {};
-      // forward to background to log
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-        chrome.runtime.sendMessage({ type: 'secureBrowser.logBlockedRequest', payload }, (resp) => {});
-      }
-      // show explainability banner to user
-      try { window.__secureBrowserShowExplain({ title: 'Network request blocked', tabId: '' }); } catch {}
-    } catch (e) {}
-  }, false);
-
-  // inject on startup
-  injectNetworkInterceptor();
-
   function sendEvidence(trigger) {
     const payload = scanPage(trigger);
 
@@ -860,21 +843,23 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     scheduleEvidence("location_change", 0);
   }
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type === MESSAGE_TYPES.REQUEST_PAGE_SCAN) {
-      sendEvidence("requested");
-      sendResponse({ ok: true });
-      return false;
-    }
+  if (typeof chrome?.runtime?.onMessage?.addListener === "function") {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message?.type === MESSAGE_TYPES.REQUEST_PAGE_SCAN) {
+        sendEvidence("requested");
+        sendResponse({ ok: true });
+        return false;
+      }
 
-    if (message?.type === MESSAGE_TYPES.RISK_LOCKDOWN_SHOW) {
-      showRiskLockdown(message.payload || {});
-      sendResponse({ ok: true });
-      return false;
-    }
+      if (message?.type === MESSAGE_TYPES.RISK_LOCKDOWN_SHOW) {
+        showRiskLockdown(message.payload || {});
+        sendResponse({ ok: true });
+        return false;
+      }
 
-    return false;
-  });
+      return false;
+    });
+  }
 
   observeDocument(document);
   observeAccessibleIframeDocuments();

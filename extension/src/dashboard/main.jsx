@@ -113,7 +113,8 @@ function DashboardApp() {
 
   useEffect(() => {
     const storage = globalThis.chrome?.storage;
-    if (!storage?.onChanged) return undefined;
+    const onChanged = storage?.onChanged;
+    if (!onChanged || typeof onChanged.addListener !== "function") return undefined;
 
     const scanKeys = new Set([
       "secureBrowser.downloadScans",
@@ -127,8 +128,12 @@ function DashboardApp() {
       }
     };
 
-    storage.onChanged.addListener(handleStorageChange);
-    return () => storage.onChanged.removeListener(handleStorageChange);
+    onChanged.addListener(handleStorageChange);
+    return () => {
+      if (typeof onChanged.removeListener === "function") {
+        onChanged.removeListener(handleStorageChange);
+      }
+    };
   }, [loadScanSummaries]);
 
   const latest = evidence[0] ?? null;

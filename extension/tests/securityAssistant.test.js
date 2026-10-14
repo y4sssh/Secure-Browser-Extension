@@ -199,7 +199,7 @@ test("assistant exposes ticketing-ready fields for affected asset, incident ID, 
   assert.match(result.analysis.closureCriteria, /close|verify|domain|credential|safe/i);
 });
 
-test("risky page lock screen is injected with explicit continue and close actions", async () => {
+test("risky page lock screen freezes the page until an explicit continue confirmation", async () => {
   const fs = await import("node:fs");
   const contentScriptPath = new URL("../src/content/contentScript.js", import.meta.url);
   const messageTypesPath = new URL("../src/lib/chrome/messageTypes.js", import.meta.url);
@@ -208,10 +208,10 @@ test("risky page lock screen is injected with explicit continue and close action
 
   assert.ok(contentScript.includes("Secure Browser blocked this page"), "Overlay should present a browser-native blocked-page notification");
   assert.ok(contentScript.includes("Close tab"), "Overlay should offer a close-tab action");
-  assert.ok(contentScript.includes("Reload page"), "Overlay should force a reload or close flow for risky pages");
-  assert.ok(contentScript.includes("must close this tab or reload the page"), "Overlay should require a safe close-or-reload action instead of a direct continue bypass");
+  assert.ok(contentScript.includes("Continue anyway"), "Overlay should let the user request access to a risky page");
+  assert.ok(contentScript.includes("I understand, continue"), "Overlay should require explicit confirmation before unfreezing");
+  assert.ok(contentScript.includes('sessionStorage.setItem("secureBrowser.riskLockdownAllowed", "true")'), "The confirmation should only allow the current page session");
   assert.ok(contentScript.includes("riskLockdown"), "Content script should handle a risky-page lockdown message");
-  assert.ok(contentScript.includes("Ignore for this site"), "Overlay should offer a site-level ignore option");
   assert.ok(contentScript.includes("Recommended action"), "Overlay should surface a clear recommendation text");
   assert.ok(messageTypes.includes("RISK_LOCKDOWN"), "Background message types should include the lockdown trigger");
 });
@@ -236,6 +236,7 @@ test("risk lockdown triggers before a page only reaches the highest-risk bucket"
   assert.ok(router.includes("verdict !== \"trusted\""), "Any non-trusted verdict should trigger the overlay for suspicious sites");
   assert.ok(contentScript.includes("document.documentElement.style.overflow = \"hidden\""), "The overlay should actively freeze the page behind the warning");
   assert.ok(router.includes("setBadgeText"), "Background router should set a browser-action warning badge when a risky page is blocked");
+  assert.ok(!router.includes("sessionStorage.setItem"), "The service worker must not attempt to use page sessionStorage");
 });
 
 test("extension health panel collapses repeated identical scans", async () => {

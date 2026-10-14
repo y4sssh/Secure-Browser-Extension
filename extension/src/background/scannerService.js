@@ -2,7 +2,7 @@ import {
   scoreDownloadItem,
   scoreCookieItem,
   scoreExtensionItem,
-} from "../lib/securityUtils";
+} from "../lib/securityUtils.js";
 import {
   getLatestCookieScans,
   getLatestExtensionScans,
@@ -13,7 +13,7 @@ import {
   savePasswordScan,
   saveDownloadScan,
   findPasswordFingerprint,
-} from "../lib/storage/scanStorage";
+} from "../lib/storage/scanStorage.js";
 
 export {
   getLatestCookieScans,
@@ -104,11 +104,11 @@ async function runDownloadScanForItem(downloadItem) {
 }
 
 export function setupScannerService() {
-  if (chrome?.downloads?.onCreated) {
+  if (chrome?.downloads?.onCreated && typeof chrome.downloads.onCreated.addListener === "function") {
     chrome.downloads.onCreated.addListener(runDownloadScanForItem);
   }
 
-  if (chrome?.downloads?.onChanged) {
+  if (chrome?.downloads?.onChanged && typeof chrome.downloads.onChanged.addListener === "function") {
     chrome.downloads.onChanged.addListener(async (delta) => {
       if (!delta?.id) return;
       const downloadItem = await getDownloadById(delta.id);

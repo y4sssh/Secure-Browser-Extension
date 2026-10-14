@@ -15,6 +15,7 @@ import {
   sendTabMessage,
 } from "../lib/chrome/runtime";
 import { formatTimestamp, getPrimaryScore } from "../lib/evidence/evidenceSummary";
+import { ensureLatestPageScan } from "./scanBootstrap";
 import "../styles/global.css";
 
 function PopupApp() {
@@ -24,9 +25,24 @@ function PopupApp() {
 
   const loadLatestEvidence = useCallback(async () => {
     setLoading(true);
-    const response = await sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_EVIDENCE });
-    setEvidence(response?.ok ? response.evidence : null);
-    setStatus(response?.ok ? "" : response?.error ?? "Unable to read stored evidence.");
+
+    const scanResult = await ensureLatestPageScan({
+      readLatestEvidence: async () => {
+        const response = await sendRuntimeMessage({ type: MESSAGE_TYPES.GET_LATEST_EVIDENCE });
+        if (!response?.ok) {
+          setStatus(response?.error ?? "Unable to read stored evidence.");
+          return null;
+        }
+
+        return response.evidence ?? null;
+      },
+      queryActiveTab,
+      sendTabMessage,
+      setStatus,
+    });
+
+    setEvidence(scanResult.evidence ?? null);
+    setStatus(scanResult.error || "");
     setLoading(false);
   }, []);
 
