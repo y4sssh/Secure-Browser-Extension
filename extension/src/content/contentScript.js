@@ -38,10 +38,22 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
   let lastHref = window.location.href;
   let currentRiskOverlay = null;
   let previousBodyPointerEvents = "";
+  let previousBodyUserSelect = "";
+  let previousBodyAriaHidden = null;
+  let previousBodyInert = false;
   let previousDocumentOverflow = "";
+  let previousDocumentScrollBehavior = "";
+  let frozenScrollPosition = null;
   let riskLockdownActive = false;
   let riskLockdownGuard = null;
   let riskLockdownObserver = null;
+
+  const RISK_LOCKDOWN_UI = "#secure-browser-risk-lockdown, #secure-browser-risk-toast, #secure-browser-risk-topbar";
+  const RISK_LOCKDOWN_BLOCKED_EVENTS = [
+    "mousedown", "mouseup", "click", "dblclick", "auxclick", "contextmenu",
+    "keydown", "keypress", "keyup", "beforeinput", "input", "change", "submit",
+    "paste", "copy", "cut", "dragstart", "drop", "touchstart", "touchmove", "wheel", "scroll",
+  ];
 
   function getIgnoredRiskSites() {
     try {
@@ -83,35 +95,57 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       return;
     }
 
+    const isLockdownUiTarget = (target) => Boolean(target?.closest?.(RISK_LOCKDOWN_UI));
+
     const suppressEvent = (event) => {
-      if (event.target && event.target.closest && event.target.closest("#secure-browser-risk-lockdown, #secure-browser-risk-toast, #secure-browser-risk-topbar")) {
+      if (isLockdownUiTarget(event.target)) {
         return;
       }
       event.preventDefault();
       event.stopPropagation();
-      if (event.type === "keydown") {
+      if (event.type === "keydown" || event.type === "submit") {
         event.stopImmediatePropagation();
       }
+    };
+
+    const trapFocus = (event) => {
+      if (!riskLockdownActive || isLockdownUiTarget(event.target)) {
+        return;
+      }
+      const primaryControl = currentRiskOverlay?.querySelector("button:not([disabled])");
+      primaryControl?.focus({ preventScroll: true });
     };
 
     riskLockdownGuard = {
       suppressEvent,
       handleKeydown: (event) => {
-        if (event.key === "Tab" || event.key === "Escape" || event.key === "F5") {
+        if (event.key === "Tab") {
+          event.preventDefault();
+          const controls = Array.from(currentRiskOverlay?.querySelectorAll("button:not([disabled])") || []);
+          if (controls.length > 0) {
+            const activeIndex = controls.indexOf(document.activeElement);
+            const direction = event.shiftKey ? -1 : 1;
+            const nextIndex = (activeIndex + direction + controls.length) % controls.length;
+            controls[nextIndex].focus({ preventScroll: true });
+          }
+          return;
+        }
+
+        if (event.key === "Escape" || event.key === "F5" || ((event.ctrlKey || event.metaKey) && ["r", "l", "w"].includes(event.key.toLowerCase()))) {
           event.preventDefault();
         }
         suppressEvent(event);
       },
+      trapFocus,
     };
 
-    document.addEventListener("mousedown", suppressEvent, true);
-    document.addEventListener("mouseup", suppressEvent, true);
-    document.addEventListener("click", suppressEvent, true);
-    document.addEventListener("keydown", riskLockdownGuard.handleKeydown, true);
-    document.addEventListener("touchstart", suppressEvent, true);
-    document.addEventListener("touchmove", suppressEvent, { passive: false, capture: true });
-    document.addEventListener("wheel", suppressEvent, { passive: false, capture: true });
-    document.addEventListener("scroll", suppressEvent, { passive: false, capture: true });
+    for (const eventType of RISK_LOCKDOWN_BLOCKED_EVENTS) {
+      const options = eventType === "touchmove" || eventType === "wheel"
+        ? { capture: true, passive: false }
+        : true;
+      document.addEventListener(eventType, eventType === "keydown" ? riskLockdownGuard.handleKeydown : suppressEvent, options);
+    }
+    document.addEventListener("focusin", trapFocus, true);
   }
 
   function removeRiskLockdownGuard() {
@@ -119,15 +153,32 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       return;
     }
 
-    document.removeEventListener("mousedown", riskLockdownGuard.suppressEvent, true);
-    document.removeEventListener("mouseup", riskLockdownGuard.suppressEvent, true);
-    document.removeEventListener("click", riskLockdownGuard.suppressEvent, true);
-    document.removeEventListener("keydown", riskLockdownGuard.handleKeydown, true);
-    document.removeEventListener("touchstart", riskLockdownGuard.suppressEvent, true);
-    document.removeEventListener("touchmove", riskLockdownGuard.suppressEvent, { passive: false, capture: true });
-    document.removeEventListener("wheel", riskLockdownGuard.suppressEvent, { passive: false, capture: true });
-    document.removeEventListener("scroll", riskLockdownGuard.suppressEvent, { passive: false, capture: true });
+    for (const eventType of RISK_LOCKDOWN_BLOCKED_EVENTS) {
+      document.removeEventListener(eventType, eventType === "keydown" ? riskLockdownGuard.handleKeydown : riskLockdownGuard.suppressEvent, true);
+    }
+    document.removeEventListener("focusin", riskLockdownGuard.trapFocus, true);
     riskLockdownGuard = null;
+  }
+
+  function enforceRiskLockdownFreeze() {
+    if (!riskLockdownActive) {
+      return;
+    }
+
+    if (document.body) {
+      document.body.style.pointerEvents = "none";
+      document.body.style.userSelect = "none";
+      document.body.setAttribute("aria-hidden", "true");
+      document.body.inert = true;
+    }
+
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.scrollBehavior = "auto";
+    document.documentElement.style.filter = "saturate(0.65) brightness(0.85)";
+
+    if (frozenScrollPosition) {
+      window.scrollTo(frozenScrollPosition.x, frozenScrollPosition.y);
+    }
   }
 
   function startRiskLockdownPersistence() {
@@ -139,6 +190,8 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
       if (!riskLockdownActive) {
         return;
       }
+
+      enforceRiskLockdownFreeze();
 
       if (currentRiskOverlay && currentRiskOverlay.isConnected) {
         return;
@@ -578,21 +631,22 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     panel.append(badge, title, description, reasonsList, recommendation, reloadConfirm, continueConfirm, strictNotice, actionRow, footer);
     overlay.appendChild(panel);
 
-    const rootNode = document.body || document.documentElement;
-    if (rootNode) {
-      previousBodyPointerEvents = rootNode.style.pointerEvents || "";
-      rootNode.style.pointerEvents = "";
-      rootNode.style.userSelect = "none";
-      rootNode.setAttribute("aria-hidden", "true");
+    if (document.body) {
+      previousBodyPointerEvents = document.body.style.pointerEvents || "";
+      previousBodyUserSelect = document.body.style.userSelect || "";
+      previousBodyAriaHidden = document.body.getAttribute("aria-hidden");
+      previousBodyInert = Boolean(document.body.inert);
     }
 
     previousDocumentOverflow = document.documentElement.style.overflow || "";
-    document.documentElement.style.overflow = "hidden";
-    document.documentElement.style.filter = "saturate(0.65) brightness(0.85)";
+    previousDocumentScrollBehavior = document.documentElement.style.scrollBehavior || "";
+    frozenScrollPosition = { x: window.scrollX, y: window.scrollY };
+    enforceRiskLockdownFreeze();
     overlay.style.pointerEvents = "auto";
     document.documentElement.appendChild(overlay);
     currentRiskOverlay = overlay;
     startRiskLockdownPersistence();
+    window.setTimeout(() => continueButton.focus({ preventScroll: true }), 0);
   }
 
   function showRiskLockdown(payload = {}) {
@@ -638,18 +692,26 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
 
     if (document.body) {
       document.body.style.pointerEvents = previousBodyPointerEvents;
-      document.body.style.userSelect = "";
+      document.body.style.userSelect = previousBodyUserSelect;
+      document.body.inert = previousBodyInert;
+      if (previousBodyAriaHidden === null) {
+        document.body.removeAttribute("aria-hidden");
+      } else {
+        document.body.setAttribute("aria-hidden", previousBodyAriaHidden);
+      }
     }
 
     document.documentElement.style.pointerEvents = "";
     document.documentElement.style.overflow = previousDocumentOverflow;
+    document.documentElement.style.scrollBehavior = previousDocumentScrollBehavior;
     document.documentElement.style.filter = "";
     riskLockdownActive = false;
     removeRiskLockdownGuard();
     stopRiskLockdownPersistence();
 
-    if (document.body) {
-      document.body.removeAttribute("aria-hidden");
+    if (frozenScrollPosition) {
+      window.scrollTo(frozenScrollPosition.x, frozenScrollPosition.y);
+      frozenScrollPosition = null;
     }
 
     const toastEl = document.getElementById("secure-browser-risk-toast");

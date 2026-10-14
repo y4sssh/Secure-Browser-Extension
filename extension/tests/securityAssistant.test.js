@@ -211,6 +211,9 @@ test("risky page lock screen freezes the page until an explicit continue confirm
   assert.ok(contentScript.includes("Continue anyway"), "Overlay should let the user request access to a risky page");
   assert.ok(contentScript.includes("I understand, continue"), "Overlay should require explicit confirmation before unfreezing");
   assert.ok(contentScript.includes('sessionStorage.setItem("secureBrowser.riskLockdownAllowed", "true")'), "The confirmation should only allow the current page session");
+  assert.ok(contentScript.includes("document.body.inert = true"), "The underlying page should be natively inert while frozen");
+  assert.ok(contentScript.includes("RISK_LOCKDOWN_BLOCKED_EVENTS"), "The freeze should block form, clipboard, drag, and pointer events");
+  assert.ok(contentScript.includes("trapFocus"), "Keyboard focus should remain inside the consent warning");
   assert.ok(contentScript.includes("riskLockdown"), "Content script should handle a risky-page lockdown message");
   assert.ok(contentScript.includes("Recommended action"), "Overlay should surface a clear recommendation text");
   assert.ok(messageTypes.includes("RISK_LOCKDOWN"), "Background message types should include the lockdown trigger");
