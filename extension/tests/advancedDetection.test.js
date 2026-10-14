@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { scoreBehavioralSignals } from "../src/lib/scoring/behavioralSignals.js";
 import { scoreVisualBrandMismatch } from "../src/lib/scoring/visualBrandMismatch.js";
 import { runHybridRiskModel } from "../src/lib/scoring/modelPipeline.js";
 import { loadUserRiskPolicy, evaluateUserRiskPolicy, saveUserRiskPolicy } from "../src/lib/policy/userRiskPolicy.js";
@@ -27,19 +28,50 @@ test("visual brand mismatch detector catches impersonation patterns", () => {
   assert.ok(result.reasons.some((reason) => /Microsoft|brand/i.test(reason)));
 });
 
-test("hybrid model merges heuristic and visual signals with a stable version", () => {
+test("behavioral detector flags deceptive credential flows before the user enters data", () => {
+  const result = scoreBehavioralSignals({
+    hostname: "signin-microsoft.example",
+    forms: [
+      {
+        passwordFieldCount: 1,
+        hiddenPasswordFieldCount: 1,
+        hiddenCredentialFieldCount: 1,
+        antiAnalysisSignalCount: 1,
+        actionIsCrossOrigin: true,
+        hasLoginText: true,
+      },
+    ],
+    timeline: [
+      { event: "form_action_changed" },
+      { event: "delayed_password_field" },
+    ],
+    redirectCount: 2,
+    brandRisk: 0.8,
+  });
+
+  assert.ok(result.risk >= 0.72, "behavior risk should be elevated for deceptive login behavior");
+  assert.ok(
+    result.reasons.some((reason) => /redirect|form action|hidden|behavior/i.test(reason.message ?? reason)),
+  );
+});
+
+test("hybrid model merges heuristic, behavioral, and reputation signals with a stable version", () => {
   const modelOutput = runHybridRiskModel({
     urlRisk: 0.71,
     formRisk: 0.82,
     brandRisk: 0.86,
     visualRisk: 0.91,
+    behavioralRisk: 0.83,
+    reputationRisk: 0.76,
     payload: { hostname: "signin-microsoft.example" },
   });
 
   assert.equal(modelOutput.modelVersion, "secure-browser-hybrid-v1");
+  assert.equal(modelOutput.behavioralRisk, 0.83);
+  assert.equal(modelOutput.reputationRisk, 0.76);
   assert.ok(modelOutput.finalScore >= 0);
   assert.ok(modelOutput.finalScore <= 100);
-  assert.ok(modelOutput.reasons.some((reason) => /visual|brand|model/i.test(reason)));
+  assert.ok(modelOutput.reasons.some((reason) => /visual|brand|behavior|reputation|model/i.test(reason)));
 });
 
 test("user policy engine blocks malicious domains and protects trusted brands", () => {

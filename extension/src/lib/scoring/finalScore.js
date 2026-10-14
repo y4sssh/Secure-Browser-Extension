@@ -1,4 +1,5 @@
 import { evaluateUserRiskPolicy } from "../policy/userRiskPolicy.js";
+import { scoreBehavioralSignals, scoreThreatIntelSignals } from "./behavioralSignals.js";
 import { runHybridRiskModel } from "./modelPipeline.js";
 
 const VERDICTS = {
@@ -20,10 +21,14 @@ export function calculateFinalScore({
   formResult,
   brandResult,
   visualResult,
+  behavioralResult,
+  reputationResult,
   brandRisk = 0,
   downloadRisk = 0,
   extensionExposureRisk = 0,
   visualRisk = 0,
+  behavioralRisk = 0,
+  reputationRisk = 0,
   policy = null,
   hostname = "",
 } = {}) {
@@ -33,23 +38,55 @@ export function calculateFinalScore({
   const normalizedVisualRisk = clampRisk(visualResult?.risk ?? visualRisk);
   const normalizedDownloadRisk = clampRisk(downloadRisk);
   const normalizedExtensionRisk = clampRisk(extensionExposureRisk);
+  const normalizedBehavioralRisk = clampRisk(behavioralResult?.risk ?? behavioralRisk);
+  const normalizedReputationRisk = clampRisk(reputationResult?.risk ?? reputationRisk);
   const weightedRisk =
-    urlRisk * 0.36 +
-    formRisk * 0.52 +
-    normalizedBrandRisk * 0.06 +
-    normalizedVisualRisk * 0.04 +
+    urlRisk * 0.24 +
+    formRisk * 0.34 +
+    normalizedBrandRisk * 0.12 +
+    normalizedVisualRisk * 0.09 +
+    normalizedBehavioralRisk * 0.14 +
+    normalizedReputationRisk * 0.06 +
     normalizedDownloadRisk * 0.01 +
     normalizedExtensionRisk * 0.01;
   const synergyRisk = urlRisk >= 0.4 && formRisk >= 0.55 ? 0.06 : 0;
   const finalRisk = clampRisk(
-    Math.max(urlRisk, formRisk, normalizedBrandRisk, normalizedVisualRisk, normalizedDownloadRisk, normalizedExtensionRisk, weightedRisk) + synergyRisk,
+    Math.max(
+      urlRisk,
+      formRisk,
+      normalizedBrandRisk,
+      normalizedVisualRisk,
+      normalizedBehavioralRisk,
+      normalizedReputationRisk,
+      normalizedDownloadRisk,
+      normalizedExtensionRisk,
+      weightedRisk,
+    ) + synergyRisk,
   );
+
+  const resolvedBehavioral = behavioralResult ??
+    scoreBehavioralSignals({
+      forms: formResult?.aggregate ? formResult.aggregate : formResult?.forms ?? [],
+      timeline: formResult?.aggregate?.timeline ?? [],
+      redirectCount: urlResult?.features?.redirectCount ?? 0,
+      brandRisk: normalizedBrandRisk,
+      hostname,
+    });
+  const resolvedReputation = reputationResult ??
+    scoreThreatIntelSignals({
+      hostname,
+      brandDomainMismatch: Boolean(brandResult?.features?.domainMismatch || urlResult?.features?.brandDomainMismatch),
+      redirectCount: urlResult?.features?.redirectCount ?? 0,
+      pageRisk: Math.max(urlRisk, formRisk, normalizedBrandRisk, normalizedVisualRisk),
+    });
 
   const modelResult = runHybridRiskModel({
     urlRisk,
     formRisk,
     brandRisk: normalizedBrandRisk,
     visualRisk: normalizedVisualRisk,
+    behavioralRisk: resolvedBehavioral.risk,
+    reputationRisk: resolvedReputation.risk,
     payload: { hostname, domain: hostname },
   });
 
@@ -60,6 +97,8 @@ export function calculateFinalScore({
     formResult?.reasons,
     brandResult?.reasons,
     visualResult?.reasons,
+    resolvedBehavioral?.reasons,
+    resolvedReputation?.reasons,
     modelResult?.reasons,
   );
 
@@ -93,6 +132,8 @@ export function calculateFinalScore({
       formRisk,
       brandRisk: normalizedBrandRisk,
       visualRisk: normalizedVisualRisk,
+      behavioralRisk: resolvedBehavioral.risk,
+      reputationRisk: resolvedReputation.risk,
       downloadRisk: normalizedDownloadRisk,
       extensionExposureRisk: normalizedExtensionRisk,
       finalTrustScore: adjustedTrustScore,

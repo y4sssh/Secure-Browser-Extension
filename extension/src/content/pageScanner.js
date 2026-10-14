@@ -1,5 +1,6 @@
 import { calculateFinalScore } from "../lib/scoring/finalScore.js";
 import { collectKnownBrands, isAllowedBrandHost } from "../lib/brand/brandProfiles.js";
+import { scoreBehavioralSignals, scoreThreatIntelSignals } from "../lib/scoring/behavioralSignals.js";
 import { scoreBrandGuard } from "../lib/scoring/brandGuardScore.js";
 import { scoreForms } from "../lib/scoring/formScore.js";
 import { getRegistrableDomain, scoreUrl } from "../lib/scoring/urlScore.js";
@@ -59,11 +60,26 @@ export function scanPage(trigger = "document_idle") {
     textSignals: pageContext.textSignals,
     forms: formScan.forms,
   });
+  const behavioralResult = scoreBehavioralSignals({
+    hostname: pageUrl.hostname,
+    forms: formScan.forms,
+    timeline,
+    redirectCount,
+    brandRisk: brandResult.risk,
+  });
+  const threatIntelResult = scoreThreatIntelSignals({
+    hostname: pageUrl.hostname,
+    brandDomainMismatch: Boolean(brandResult.features.domainMismatch || urlResult.features.brandDomainMismatch),
+    redirectCount,
+    pageRisk: Math.max(urlResult.risk, formResult.risk, brandResult.risk, visualResult.risk),
+  });
   const finalResult = calculateFinalScore({
     urlResult,
     formResult,
     brandResult,
     visualResult,
+    behavioralResult,
+    reputationResult: threatIntelResult,
     hostname: pageUrl.hostname,
   });
   const aggregate = formResult.aggregate;
@@ -119,6 +135,8 @@ export function scanPage(trigger = "document_idle") {
       textSnippetCount: brandFeatures.textSnippetCount,
       visualBrandMismatch: visualResult.mismatch,
       visualRisk: visualResult.risk,
+      behavioralRisk: behavioralResult.risk,
+      reputationRisk: threatIntelResult.risk,
       iframeDepth: window.top === window ? 0 : 1,
     },
     features: {
@@ -142,6 +160,8 @@ export function scanPage(trigger = "document_idle") {
     },
     brandGuard: brandFeatures,
     visualBrandMismatch: visualResult,
+    behavioralSignals: behavioralResult,
+    threatIntel: threatIntelResult,
     textSignals: pageContext.textSignals,
     timeline,
     forms: formScan.forms.slice(0, MAX_FORMS),
