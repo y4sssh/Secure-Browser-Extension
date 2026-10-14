@@ -1,4 +1,4 @@
-export function SignalGrid({ evidence }) {
+export function SignalGrid({ evidence, compact = false }) {
   const signals = evidence?.signals ?? {};
   const scores = evidence?.scores ?? {};
   const items = [
@@ -21,7 +21,7 @@ export function SignalGrid({ evidence }) {
 
   return (
     <dl className="signal-grid">
-      {items.map(([label, value]) => (
+      {items.slice(0, compact ? 6 : items.length).map(([label, value]) => (
         <div key={label} className="signal-item">
           <dt>{label}</dt>
           <dd>{value}</dd>

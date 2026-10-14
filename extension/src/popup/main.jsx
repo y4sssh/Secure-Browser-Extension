@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ExternalLink, LayoutDashboard, RefreshCw } from "lucide-react";
+import { Activity, ExternalLink, LayoutDashboard, RefreshCw, ScanSearch, ShieldCheck } from "lucide-react";
 import { AlertBanner } from "../components/AlertBanner";
 import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
@@ -48,10 +48,16 @@ function PopupApp() {
 
   const refreshActivePage = useCallback(async () => {
     setStatus("Scanning active tab");
+    setLoading(true);
     const tab = await queryActiveTab();
 
     if (tab?.id) {
-      await sendTabMessage(tab.id, { type: MESSAGE_TYPES.REQUEST_PAGE_SCAN });
+      const response = await sendTabMessage(tab.id, { type: MESSAGE_TYPES.REQUEST_PAGE_SCAN });
+      if (!response?.ok) {
+        setStatus(response?.error || "Unable to scan the active tab.");
+        setLoading(false);
+        return;
+      }
       window.setTimeout(loadLatestEvidence, 300);
       return;
     }
@@ -64,26 +70,41 @@ function PopupApp() {
   }, [loadLatestEvidence]);
 
   const score = getPrimaryScore(evidence);
+  const hostname = evidence?.hostname || evidence?.origin?.replace(/^https?:\/\//, "") || "Active tab";
+  const protectionLabel = loading ? "Scanning" : evidence ? "Assessment ready" : "Ready to scan";
 
   return (
     <main className="popup-shell">
       <header className="popup-header">
-        <div>
-          <h1>Secure Browser</h1>
-          <p>{evidence?.origin ?? "No page scan stored"}</p>
+        <div className="popup-brand-block">
+          <div className="popup-brand-mark"><ShieldCheck size={19} aria-hidden="true" /></div>
+          <div>
+            <h1>Secure Browser</h1>
+            <p>Private threat intelligence</p>
+          </div>
         </div>
-        <button className="icon-button" type="button" onClick={refreshActivePage} title="Scan active tab">
+        <button className={`icon-button${loading ? " is-spinning" : ""}`} type="button" onClick={refreshActivePage} title="Scan active tab" disabled={loading}>
           <RefreshCw size={18} aria-hidden="true" />
         </button>
       </header>
 
+      <section className="popup-context" aria-label="Active protection status">
+        <span className={`protection-dot${loading ? " is-scanning" : ""}`} aria-hidden="true" />
+        <span>{protectionLabel}</span>
+        <strong title={hostname}>{hostname}</strong>
+      </section>
+
       {loading ? (
-        <div className="empty-state">Loading scan</div>
+        <div className="popup-loading" aria-live="polite">
+          <Activity size={20} aria-hidden="true" />
+          <div><strong>Checking this page</strong><span>Analyzing visible security signals</span></div>
+        </div>
       ) : evidence ? (
         <>
           <AlertBanner score={score} verdict={evidence.verdict} reasons={evidence.reasons} />
           <TrustMeter score={score} />
-          <SignalGrid evidence={evidence} />
+          <div className="popup-section-heading"><span>Key signals</span><small>Latest scan</small></div>
+          <SignalGrid evidence={evidence} compact />
           <BrandGuardSummary evidence={evidence} />
           <EvidenceReasons reasons={evidence.reasons} />
           <FormGuardTimeline timeline={evidence.formGuard?.timeline ?? evidence.timeline} />
@@ -93,20 +114,31 @@ function PopupApp() {
           </div>
         </>
       ) : (
-        <div className="empty-state">No scan available</div>
+        <div className="popup-empty-state">
+          <div><ScanSearch size={26} aria-hidden="true" /></div>
+          <strong>Scan the page you are viewing</strong>
+          <p>We inspect risk signals locally and do not store page text or credentials.</p>
+        </div>
       )}
 
       {status ? <p className="status-line">{status}</p> : null}
+
+      <button className="popup-scan-button" type="button" onClick={refreshActivePage} disabled={loading}>
+        <ScanSearch size={17} aria-hidden="true" />
+        {loading ? "Scanning active page" : "Scan active page"}
+      </button>
 
       <footer className="popup-actions">
         <button className="button-secondary" type="button" onClick={() => openExtensionPage("dashboard.html")}>
           <LayoutDashboard size={17} aria-hidden="true" />
           Dashboard
         </button>
-        <a className="button-secondary" href={evidence?.url ?? "#"} target="_blank" rel="noreferrer">
-          <ExternalLink size={17} aria-hidden="true" />
-          Page
-        </a>
+        {evidence?.url ? (
+          <a className="button-secondary" href={evidence.url} target="_blank" rel="noreferrer">
+            <ExternalLink size={17} aria-hidden="true" />
+            Open page
+          </a>
+        ) : <span className="button-secondary is-disabled">Page unavailable</span>}
       </footer>
     </main>
   );

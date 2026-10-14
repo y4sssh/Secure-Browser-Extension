@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { RefreshCw, ShieldCheck } from "lucide-react";
+import { FileSearch, Home, LockKeyhole, RefreshCw, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { AlertBanner } from "../components/AlertBanner";
 import { BrandGuardSummary } from "../components/BrandGuardSummary";
 import { EvidenceReasons } from "../components/EvidenceReasons";
@@ -21,6 +21,28 @@ import { sendRuntimeMessage } from "../lib/chrome/runtime";
 import { formatTimestamp, getPrimaryScore, getTrustLabel } from "../lib/evidence/evidenceSummary";
 import { askSecurityAssistant } from "../lib/securityAssistant";
 import "../styles/global.css";
+
+const WORKSPACE_META = {
+  Overview: { eyebrow: "Command center", title: "Browser security, at a glance", description: "A privacy-first view of the signals Secure Browser is actively monitoring." },
+  Threats: { eyebrow: "Threat workspace", title: "Prioritize what needs attention", description: "Review local browser, extension, cookie, download, and credential-risk signals." },
+  Evidence: { eyebrow: "Evidence vault", title: "Searchable scan history", description: "Inspect privacy-safe evidence from recent page assessments." },
+  Policies: { eyebrow: "Security controls", title: "Tailor your protection posture", description: "Configure trust overrides and the thresholds used for warnings and blocking." },
+  Privacy: { eyebrow: "Privacy center", title: "You control every optional signal", description: "Review how each capability uses data and enable it only when you choose." },
+};
+
+function WorkspaceHero({ section, children }) {
+  const meta = WORKSPACE_META[section];
+  return (
+    <section className="workspace-hero">
+      <div>
+        <span className="eyebrow">{meta.eyebrow}</span>
+        <h2>{meta.title}</h2>
+        <p>{meta.description}</p>
+      </div>
+      {children ? <div className="workspace-hero-actions">{children}</div> : null}
+    </section>
+  );
+}
 
 function deduplicateExtensionScans(scans) {
   const seen = new Map();
@@ -63,6 +85,8 @@ function DashboardApp() {
   const [extensionScans, setExtensionScans] = useState([]);
   const [passwordScans, setPasswordScans] = useState([]);
   const [weeklyReport, setWeeklyReport] = useState(null);
+  const [evidenceQuery, setEvidenceQuery] = useState("");
+  const [evidenceFilter, setEvidenceFilter] = useState("all");
 
   const loadRecentEvidence = useCallback(async () => {
     setLoading(true);
@@ -161,6 +185,22 @@ function DashboardApp() {
     [evidence],
   );
 
+  const filteredEvidence = useMemo(() => {
+    const query = evidenceQuery.trim().toLowerCase();
+    return evidence.filter((item) => {
+      const itemScore = getPrimaryScore(item);
+      const matchesFilter = evidenceFilter === "all"
+        || (evidenceFilter === "risky" && itemScore < 50)
+        || (evidenceFilter === "caution" && itemScore >= 50 && itemScore < 80)
+        || (evidenceFilter === "trusted" && itemScore >= 80);
+      const searchable = [item.hostname, item.url, item.verdict, ...(item.reasons || [])]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return matchesFilter && (!query || searchable.includes(query));
+    });
+  }, [evidence, evidenceFilter, evidenceQuery]);
+
   const historicalTrend = useMemo(() => {
     const points = Array.from({ length: 7 }, (_, index) => {
       const base = evidence[Math.min(index, Math.max(evidence.length - 1, 0))];
@@ -201,7 +241,13 @@ function DashboardApp() {
 
   const riskLevelClass = latest ? `severity-${getTrustLabel(score).toLowerCase().replace(/\s+/g, "-")}` : "severity-idle";
 
-  const navItems = ["Overview", "Threats", "Evidence", "Policies", "Privacy"];
+  const navItems = [
+    { label: "Overview", Icon: Home },
+    { label: "Threats", Icon: ShieldAlert },
+    { label: "Evidence", Icon: FileSearch },
+    { label: "Policies", Icon: SlidersHorizontal },
+    { label: "Privacy", Icon: LockKeyhole },
+  ];
   const quickActions = [
     { label: "Review threat", action: () => setSelectedSection("Threats") },
     { label: "Policy controls", action: () => setSelectedSection("Policies") },
@@ -216,6 +262,10 @@ function DashboardApp() {
 
   const overviewSection = (
     <div className="dashboard-section">
+      <WorkspaceHero section="Overview">
+        <span className="workspace-stat"><strong>{counts.total}</strong> scans retained</span>
+        <span className="workspace-stat is-secure"><i /> Protection active</span>
+      </WorkspaceHero>
       {latest ? (
         <section className="dashboard-overview">
           <TrustMeter score={score} />
@@ -403,6 +453,12 @@ function DashboardApp() {
 
   const threatsSection = (
     <div className="dashboard-section">
+      <WorkspaceHero section="Threats">
+        <span className="workspace-stat is-risk"><strong>{counts.risky}</strong> high-risk events</span>
+        <button className="button-secondary workspace-action" type="button" onClick={() => { setEvidenceFilter("risky"); setSelectedSection("Evidence"); }}>
+          Review risky evidence
+        </button>
+      </WorkspaceHero>
       {latest ? <AlertBanner score={score} verdict={latest.verdict} reasons={latest.reasons} /> : null}
       <ScanSummaryPanel
         downloadScans={downloadScans}
@@ -421,11 +477,30 @@ function DashboardApp() {
 
   const evidenceSection = (
     <div className="dashboard-section">
+      <WorkspaceHero section="Evidence">
+        <span className="workspace-stat"><strong>{filteredEvidence.length}</strong> matching scans</span>
+      </WorkspaceHero>
+      <section className="evidence-toolbar" aria-label="Evidence filters">
+        <label className="evidence-search">
+          <Search size={16} aria-hidden="true" />
+          <input value={evidenceQuery} onChange={(event) => setEvidenceQuery(event.target.value)} placeholder="Search domain, verdict, or signal" />
+          {evidenceQuery ? <button type="button" title="Clear search" onClick={() => setEvidenceQuery("")}><X size={14} aria-hidden="true" /></button> : null}
+        </label>
+        <div className="evidence-filter-group" role="group" aria-label="Filter evidence by severity">
+          {["all", "risky", "caution", "trusted"].map((filter) => (
+            <button key={filter} type="button" className={evidenceFilter === filter ? "active" : ""} onClick={() => setEvidenceFilter(filter)}>
+              {filter === "all" ? "All" : filter}
+            </button>
+          ))}
+        </div>
+      </section>
       {!loading && evidence.length === 0 ? (
         <div className="empty-state">No page evidence stored</div>
+      ) : !loading && filteredEvidence.length === 0 ? (
+        <div className="empty-state">No stored scans match these filters</div>
       ) : (
         <section className="evidence-list" aria-label="Recent page evidence">
-          {evidence.map((item) => {
+          {filteredEvidence.map((item) => {
             const itemScore = getPrimaryScore(item);
 
             return (
@@ -457,12 +532,16 @@ function DashboardApp() {
 
   const policiesSection = (
     <div className="dashboard-section">
+      <WorkspaceHero section="Policies" />
       <PolicyDashboard />
     </div>
   );
 
   const privacySection = (
     <div className="dashboard-section">
+      <WorkspaceHero section="Privacy">
+        <span className="workspace-stat is-secure"><i /> Consent-based by default</span>
+      </WorkspaceHero>
       <PrivacyNotice />
       <ConsentPanel />
     </div>
@@ -483,14 +562,15 @@ function DashboardApp() {
           </div>
 
           <nav className="sidebar-nav" aria-label="Main navigation">
-            {navItems.map((item) => (
+            {navItems.map(({ label, Icon }) => (
               <button
-                key={item}
-                className={`nav-button${selectedSection === item ? " active" : ""}`}
+                key={label}
+                className={`nav-button${selectedSection === label ? " active" : ""}`}
                 type="button"
-                onClick={() => setSelectedSection(item)}
+                onClick={() => setSelectedSection(label)}
               >
-                {item}
+                <Icon size={17} aria-hidden="true" />
+                <span>{label}</span>
               </button>
             ))}
           </nav>
@@ -536,10 +616,16 @@ function DashboardApp() {
                 <p>{selectedSection} view</p>
               </div>
             </div>
-            <button className="button-primary" type="button" onClick={refreshAll}>
-              <RefreshCw size={17} aria-hidden="true" />
-              {drawerMode ? "Refresh" : "Refresh"}
-            </button>
+            <div className="dashboard-header-actions">
+              <span className={`header-protection-state${loading ? " is-loading" : ""}`}>
+                <i aria-hidden="true" />
+                {loading ? "Updating" : "Protection active"}
+              </span>
+              <button className="button-primary" type="button" onClick={refreshAll} disabled={loading}>
+                <RefreshCw size={17} aria-hidden="true" />
+                Refresh
+              </button>
+            </div>
           </header>
 
           {selectedSection === "Overview" && overviewSection}
