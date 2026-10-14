@@ -53,10 +53,11 @@ function deduplicateExtensionScans(scans) {
 }
 
 function DashboardApp() {
+  const drawerMode = useMemo(() => new URLSearchParams(globalThis.location?.search ?? "").get("source") === "toolbar", []);
   const [evidence, setEvidence] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
-  const [selectedSection, setSelectedSection] = useState("Overview");
+  const [selectedSection, setSelectedSection] = useState(drawerMode ? "Threats" : "Overview");
   const [downloadScans, setDownloadScans] = useState([]);
   const [cookieScans, setCookieScans] = useState([]);
   const [extensionScans, setExtensionScans] = useState([]);
@@ -196,6 +197,17 @@ function DashboardApp() {
   const riskLevelClass = latest ? `severity-${getTrustLabel(score).toLowerCase().replace(/\s+/g, "-")}` : "severity-idle";
 
   const navItems = ["Overview", "Threats", "Evidence", "Policies", "Privacy"];
+  const quickActions = [
+    { label: "Review threat", action: () => setSelectedSection("Threats") },
+    { label: "Policy controls", action: () => setSelectedSection("Policies") },
+    { label: "Privacy", action: () => setSelectedSection("Privacy") },
+  ];
+
+  const drawerSummary = useMemo(() => ({
+    riskScore: latest ? Math.max(0, Math.min(100, Math.round(100 - score))) : 0,
+    hostname: latest?.hostname || latest?.url || "Awaiting active scan",
+    reasons: latest?.reasons ? latest.reasons.slice(0, 3) : ["No active threat signals detected."],
+  }), [latest, score]);
 
   const overviewSection = (
     <div className="dashboard-section">
@@ -452,9 +464,9 @@ function DashboardApp() {
   );
 
   return (
-    <main className="dashboard-shell">
+    <main className={`dashboard-shell${drawerMode ? " toolbar-drawer" : ""}`}>
       <div className="security-shell">
-        <aside className="security-sidebar" aria-label="Security navigation">
+        <aside className={`security-sidebar${drawerMode ? " toolbar-sidebar" : ""}`} aria-label="Security navigation">
           <div className="sidebar-brand">
             <div className="brand-mark">
               <ShieldCheck size={20} aria-hidden="true" />
@@ -478,6 +490,31 @@ function DashboardApp() {
             ))}
           </nav>
 
+          {drawerMode && (
+            <>
+              <div className="drawer-summary" aria-live="polite">
+                <div className="drawer-summary-top">
+                  <span className="eyebrow">Alert snapshot</span>
+                  <strong>{drawerSummary.riskScore}%</strong>
+                </div>
+                <p className="drawer-summary-host">{drawerSummary.hostname}</p>
+                <ul className="drawer-summary-list">
+                  {drawerSummary.reasons.map((reason, index) => (
+                    <li key={`${reason}-${index}`}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="drawer-actions" aria-label="Quick actions">
+                {quickActions.map(({ label, action }) => (
+                  <button key={label} type="button" className="drawer-action" onClick={action}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           <div className="sidebar-card">
             <span className="eyebrow">Current status</span>
             <strong>{latest ? getTrustLabel(score) : "No scan"}</strong>
@@ -486,17 +523,17 @@ function DashboardApp() {
         </aside>
 
         <section className="main-panel">
-          <header className="dashboard-header">
+          <header className={`dashboard-header${drawerMode ? " toolbar-header" : ""}`}>
             <div className="brand-lockup">
               <ShieldCheck size={24} aria-hidden="true" />
               <div>
-                <h1>Security dashboard</h1>
+                <h1>{drawerMode ? "Security drawer" : "Security dashboard"}</h1>
                 <p>{selectedSection} view</p>
               </div>
             </div>
             <button className="button-primary" type="button" onClick={refreshAll}>
               <RefreshCw size={17} aria-hidden="true" />
-              Refresh
+              {drawerMode ? "Refresh" : "Refresh"}
             </button>
           </header>
 

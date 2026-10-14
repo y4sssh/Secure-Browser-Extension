@@ -622,6 +622,11 @@ h1 {
   padding: 32px 0 48px;
 }
 
+.dashboard-shell.toolbar-drawer {
+  width: min(960px, calc(100vw - 28px));
+  padding-top: 18px;
+}
+
 .security-shell {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
@@ -640,6 +645,12 @@ h1 {
   background: linear-gradient(180deg, rgba(17, 23, 39, 0.94), rgba(10, 16, 27, 0.96));
   box-shadow: 0 18px 36px rgba(3, 8, 19, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(18px);
+}
+
+.security-sidebar.toolbar-sidebar {
+  min-width: 260px;
+  padding: 16px 14px;
+  border-radius: 18px;
 }
 
 .sidebar-brand {
@@ -765,6 +776,64 @@ h1 {
   gap: 18px;
 }
 
+.drawer-summary {
+  display: grid;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(25, 33, 52, 0.96), rgba(10, 16, 25, 0.96));
+}
+
+.drawer-summary-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawer-summary-top strong {
+  font-size: 1.4rem;
+  letter-spacing: -0.05em;
+  color: #ffb6bb;
+}
+
+.drawer-summary-host {
+  margin: 0;
+  color: var(--muted-strong);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.drawer-summary-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 0.74rem;
+}
+
+.drawer-summary-list li + li {
+  margin-top: 4px;
+}
+
+.drawer-actions {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.drawer-action {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: linear-gradient(180deg, rgba(123, 153, 255, 0.12), rgba(123, 153, 255, 0.05));
+  color: var(--ink);
+  font-weight: 700;
+  text-align: left;
+}
+
 .dashboard-header {
   min-height: 62px;
   margin-bottom: 0;
@@ -774,6 +843,11 @@ h1 {
   background: linear-gradient(135deg, rgba(16, 25, 42, 0.96), rgba(12, 18, 29, 0.9));
   backdrop-filter: blur(16px);
   box-shadow: 0 14px 30px rgba(2, 6, 23, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dashboard-header.toolbar-header {
+  min-height: 54px;
+  padding: 10px 12px;
 }
 
 .brand-lockup {
