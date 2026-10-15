@@ -241,6 +241,65 @@ function DashboardApp() {
 
   const riskLevelClass = latest ? `severity-${getTrustLabel(score).toLowerCase().replace(/\s+/g, "-")}` : "severity-idle";
 
+  const threatPriorityActions = useMemo(() => {
+    const actions = [];
+
+    if (latest && score < 50) {
+      actions.push({
+        title: "Isolate the current page",
+        detail: "High-risk policy suggests you should close or review the page before entering credentials.",
+        severity: "critical",
+      });
+    }
+
+    if ((cookieScans?.[0]?.risk ?? 0) > 0.35) {
+      actions.push({
+        title: "Review cookie posture",
+        detail: "Sensitive cookies are showing elevated risk and should be reviewed before completing any session.",
+        severity: "warning",
+      });
+    }
+
+    if ((extensionScans?.[0]?.risk ?? 0) > 0.4) {
+      actions.push({
+        title: "Audit installed extensions",
+        detail: "The extension footprint includes broad access patterns and should be checked for unnecessary permissions.",
+        severity: "warning",
+      });
+    }
+
+    if (latest?.reasons?.some((reason) => /brand|impersonat|phish|redirect/i.test(String(reason)))) {
+      actions.push({
+        title: "Verify site identity",
+        detail: "Brand mismatch or deceptive redirect signals are active and deserve a trust check before interacting.",
+        severity: "critical",
+      });
+    }
+
+    if (!actions.length) {
+      actions.push({
+        title: "Monitor in place",
+        detail: "No immediate remediation is required. Continue monitoring and keep the current policy in effect.",
+        severity: "safe",
+      });
+    }
+
+    return actions.slice(0, 3);
+  }, [cookieScans, extensionScans, latest, score]);
+
+  const threatActivityFeed = useMemo(() => {
+    return evidence.slice(0, 5).map((item) => {
+      const itemScore = getPrimaryScore(item);
+      const severity = itemScore < 50 ? "critical" : itemScore < 80 ? "warning" : "safe";
+      return {
+        title: item.hostname || "Unknown host",
+        time: formatTimestamp(item.timestamp),
+        message: item.reasons?.[0] || item.verdict || "Scan recorded",
+        severity,
+      };
+    });
+  }, [evidence]);
+
   const navItems = [
     { label: "Overview", Icon: Home },
     { label: "Threats", Icon: ShieldAlert },
@@ -451,6 +510,15 @@ function DashboardApp() {
     </div>
   );
 
+  const overallThreatScore = latest ? Math.max(0, 100 - score) : 0;
+  const threatSummaryBars = [
+    { label: "Page", value: Math.min(100, Math.round((latest?.scores?.urlRisk ?? 0) * 100)), tone: "danger" },
+    { label: "Form", value: Math.min(100, Math.round((latest?.scores?.formRisk ?? 0) * 100)), tone: "amber" },
+    { label: "Brand", value: Math.min(100, Math.round((latest?.scores?.brandRisk ?? 0) * 100)), tone: "purple" },
+    { label: "Cookie", value: Math.min(100, Math.round((cookieScans?.[0]?.risk ?? 0) * 100)), tone: "cyan" },
+    { label: "Ext", value: Math.min(100, Math.round((extensionScans?.[0]?.risk ?? 0) * 100)), tone: "danger" },
+  ];
+
   const threatsSection = (
     <div className="dashboard-section">
       <WorkspaceHero section="Threats">
@@ -459,6 +527,89 @@ function DashboardApp() {
           Review risky evidence
         </button>
       </WorkspaceHero>
+
+      <section className="threat-summary-header" aria-label="Threat summary">
+        <div className="threat-summary-copy">
+          <span className="eyebrow">Risk posture</span>
+          <h2>{latest ? `${overallThreatScore}% active threat score` : "Awaiting page analysis"}</h2>
+          <p>{latest ? latest.reasons?.[0] || "No priority risk note yet." : "No current scan data is available for this view."}</p>
+        </div>
+
+        <div className="threat-summary-metrics" aria-label="Threat metrics">
+          <div className="metric-tile is-danger">
+            <span>Critical</span>
+            <strong>{counts.risky}</strong>
+          </div>
+          <div className="metric-tile is-warning">
+            <span>Needs review</span>
+            <strong>{counts.caution}</strong>
+          </div>
+          <div className="metric-tile is-safe">
+            <span>Trusted</span>
+            <strong>{counts.trusted ?? 0}</strong>
+          </div>
+        </div>
+
+        <div className="threat-mini-chart" aria-label="Threat category mini chart">
+          {threatSummaryBars.map((item) => (
+            <div key={item.label} className="mini-chart-item">
+              <div className="mini-chart-label-row">
+                <span>{item.label}</span>
+                <strong>{item.value}%</strong>
+              </div>
+              <div className="mini-chart-track">
+                <span className={`mini-chart-fill tone-${item.tone}`} style={{ width: `${item.value}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="threat-priority-strip" aria-label="Priority actions and timelines">
+        <div className="priority-actions-panel">
+          <div className="panel-header compact">
+            <div>
+              <span className="panel-kicker">Priority</span>
+              <h3>Recommended actions</h3>
+            </div>
+          </div>
+          <ul className="priority-actions-list">
+            {threatPriorityActions.map((action) => (
+              <li key={action.title} className={`priority-action severity-${action.severity}`}>
+                <div className="priority-bullet" aria-hidden="true" />
+                <div>
+                  <strong>{action.title}</strong>
+                  <p>{action.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="timeline-panel">
+          <div className="panel-header compact">
+            <div>
+              <span className="panel-kicker">Activity</span>
+              <h3>Threat timeline</h3>
+            </div>
+          </div>
+          <ul className="threat-timeline">
+            {threatActivityFeed.map((entry) => (
+              <li key={`${entry.title}-${entry.time}`} className={`timeline-entry severity-${entry.severity}`}>
+                <div className="timeline-dot" aria-hidden="true" />
+                <div className="timeline-copy">
+                  <div className="timeline-header">
+                    <strong>{entry.title}</strong>
+                    <time>{entry.time}</time>
+                  </div>
+                  <p>{entry.message}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       {latest ? <AlertBanner score={score} verdict={latest.verdict} reasons={latest.reasons} /> : null}
       <ScanSummaryPanel
         downloadScans={downloadScans}

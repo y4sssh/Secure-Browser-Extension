@@ -62,7 +62,7 @@ test("brand-themed password form posting to another domain is high risk", () => 
   assert.ok(finalResult.reasons.includes("Password form submits to a different domain"));
 });
 
-test("delayed injected login form is high risk and explained", () => {
+test("delayed cross-domain login form is high risk and explained", () => {
   const { finalResult, formResult } = evaluate({
     pageUrl: "https://example.test/account",
     timeline: [
@@ -81,9 +81,9 @@ test("delayed injected login form is high risk and explained", () => {
         method: "post",
         pageProtocol: "https:",
         actionProtocol: "https:",
-        actionHost: "example.test",
-        actionIsCrossOrigin: false,
-        actionIsCrossDomain: false,
+        actionHost: "credential-capture.example",
+        actionIsCrossOrigin: true,
+        actionIsCrossDomain: true,
         passwordFieldCount: 1,
         emailFieldCount: 1,
         hasLoginText: true,
@@ -96,6 +96,30 @@ test("delayed injected login form is high risk and explained", () => {
   assert.equal(formResult.aggregate.delayedPasswordFieldCount, 1);
   assert.ok(finalResult.reasons.includes("Login form appeared after page load"));
   assert.ok(finalResult.reasons.includes("Credential form appears inside an overlay"));
+});
+
+test("a delayed same-site HTTPS login UI remains trusted", () => {
+  const { finalResult, formResult } = evaluate({
+    pageUrl: "https://service.example.test/login",
+    timeline: [{ event: "delayed_password_field" }, { event: "login_overlay_detected" }],
+    forms: [
+      {
+        method: "post",
+        pageProtocol: "https:",
+        actionProtocol: "https:",
+        actionHost: "service.example.test",
+        actionIsCrossOrigin: false,
+        actionIsCrossDomain: false,
+        passwordFieldCount: 1,
+        emailFieldCount: 1,
+        hasLoginText: true,
+        loginOverlay: true,
+      },
+    ],
+  });
+
+  assert.equal(formResult.risk, 0.08);
+  assert.equal(finalResult.verdict, "trusted");
 });
 
 test("HTTP page asking for password is high risk", () => {

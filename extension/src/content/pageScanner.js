@@ -36,6 +36,15 @@ export function scanPage(trigger = "document_idle") {
   const formGuardSnapshot = createFormGuardSnapshot(formScan.forms, formScan, pageContext);
   const timeline = updateFormGuardTimeline(trigger, formGuardSnapshot);
   const urlResult = scoreUrl(pageUrl.href, { redirectCount });
+  const brandResult = scoreBrandGuard({
+    pageUrl: pageUrl.href,
+    claimedBrands: pageContext.claimedBrands,
+    forms: formScan.forms,
+    textSignals: pageContext.textSignals,
+    urlFeatures: urlResult.features,
+  });
+  const trustedBrandHost =
+    brandResult.features.claimedBrands.length > 0 && !brandResult.features.domainMismatch;
   const formResult = scoreForms({
     pageUrl: pageUrl.href,
     forms: formScan.forms,
@@ -44,13 +53,7 @@ export function scanPage(trigger = "document_idle") {
     suspectedCredentialIframeCount: formScan.suspectedCredentialIframeCount,
     claimedBrands: pageContext.claimedBrands,
     timeline,
-  });
-  const brandResult = scoreBrandGuard({
-    pageUrl: pageUrl.href,
-    claimedBrands: pageContext.claimedBrands,
-    forms: formScan.forms,
-    textSignals: pageContext.textSignals,
-    urlFeatures: urlResult.features,
+    trustedBrandHost,
   });
   const visualResult = scoreVisualBrandMismatch({
     pageUrl: pageUrl.href,
@@ -66,6 +69,7 @@ export function scanPage(trigger = "document_idle") {
     timeline,
     redirectCount,
     brandRisk: brandResult.risk,
+    trustedBrandHost,
   });
   const threatIntelResult = scoreThreatIntelSignals({
     hostname: pageUrl.hostname,

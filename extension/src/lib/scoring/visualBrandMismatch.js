@@ -37,7 +37,10 @@ export function scoreVisualBrandMismatch({
       (titleMatchesBrand || faviconMatchesBrand || hasCredentialContext(forms, textSignals)),
   );
 
-  let risk = 0.08;
+  // A legitimate brand page naturally has a matching title, favicon, and
+  // credential form. These are comparison inputs, not risk signals by
+  // themselves. Only score them once the host fails that brand comparison.
+  let risk = 0;
   const reasons = [];
 
   const add = (weight, message) => {
@@ -61,11 +64,11 @@ export function scoreVisualBrandMismatch({
     };
   }
 
-  if (titleMatchesBrand) {
+  if (mismatch && titleMatchesBrand) {
     add(0.16, `Page title references ${effectiveBrand}, which is a strong visual-brand cue`);
   }
 
-  if (faviconMatchesBrand) {
+  if (mismatch && faviconMatchesBrand) {
     add(0.08, `Favicon resolves to an expected ${effectiveBrand} host`);
   }
 
@@ -73,11 +76,11 @@ export function scoreVisualBrandMismatch({
     add(0.42, `Visual branding suggests ${effectiveBrand} but the page host is not on an expected ${effectiveBrand} domain`);
   }
 
-  if (hasCredentialContext(forms, textSignals)) {
+  if (mismatch && hasCredentialContext(forms, textSignals)) {
     add(0.18, "Credential flow is present alongside brand impersonation cues");
   }
 
-  if (effectiveHostname && !hostnameMatchesBrand && !effectiveHostname.includes(effectiveBrand.toLowerCase())) {
+  if (mismatch && effectiveHostname && !hostnameMatchesBrand && !effectiveHostname.includes(effectiveBrand.toLowerCase())) {
     add(0.12, `Hostname ${effectiveHostname} does not align with the expected ${effectiveBrand} identity`);
   }
 

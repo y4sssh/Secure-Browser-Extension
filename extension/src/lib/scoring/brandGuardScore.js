@@ -27,8 +27,11 @@ export function scoreBrandGuard({
   const primaryClaimedBrand = detectedBrands[0] ?? "";
   const credentialContext = hasCredentialContext(forms, textSignals);
   const domainMismatch = mismatchBrands.length > 0;
-  const reasons = [...textResult.reasons];
-  let risk = textResult.risk;
+  // Login, recovery, and security language is normal on a real provider's
+  // sign-in pages. Keep it as context for detecting impersonation, but do not
+  // turn it into risk unless the claimed identity and hosting domain disagree.
+  const reasons = [];
+  let risk = 0;
 
   const add = (weight, message) => {
     risk += weight;
@@ -50,6 +53,10 @@ export function scoreBrandGuard({
       0.56,
       `Page claims ${mismatchBrands[0]} identity from outside its expected domains`,
     );
+  }
+
+  if (domainMismatch) {
+    reasons.push(...textResult.reasons);
   }
 
   if (urlFeatures.brandDomainMismatch) {

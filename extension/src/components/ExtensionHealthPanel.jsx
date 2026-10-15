@@ -75,53 +75,67 @@ export function ExtensionHealthPanel({ extensionScans = [] }) {
 
   return (
     <section className="extension-health-panel">
-      <h3>Extension exposure</h3>
-      <p style={{ marginTop: 6, marginBottom: 10, color: "#333" }}>
+      <div className="panel-header">
+        <div>
+          <span className="panel-kicker">Installed software</span>
+          <h3>Extension exposure</h3>
+        </div>
+        <span className="panel-count">{deduplicatedScans.length} scan{deduplicatedScans.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      <p className="panel-note">
         <strong>Note:</strong> This panel shows exposure analysis based on installed extensions and their permissions. It is not proof that an extension is exfiltrating data.
       </p>
+
       {riskyPermEntries.length > 0 ? (
-        <div style={{ marginBottom: 10 }}>
-          <h4 style={{ margin: "6px 0" }}>Risky permissions observed</h4>
-          <ul style={{ marginTop: 6 }}>
+        <div className="permission-summary">
+          <h4>Risky permissions observed</h4>
+          <ul className="permission-list">
             {riskyPermEntries.map(([perm, count]) => (
-              <li key={perm} style={{ marginBottom: 4 }}>
-                <strong>{perm}</strong> — {PERMISSION_EXPLANATIONS[perm]} ({count} extension{count !== 1 ? "s" : ""})
+              <li key={perm}>
+                <span className="perm-name">{perm}</span>
+                <span className="perm-copy">{PERMISSION_EXPLANATIONS[perm]}</span>
+                <span className="perm-meta">({count} extension{count !== 1 ? "s" : ""})</span>
               </li>
             ))}
           </ul>
         </div>
       ) : null}
+
       <div className="extension-list">
         {deduplicatedScans.map((scan) => (
           <article key={`${scan.timestamp}-${scan.extensionCount}-${(scan.extensions || []).map((ext) => ext.id).join("|")}`} className="extension-scan-card">
             <div className="extension-scan-header">
-              <h4>{`Extensions: ${scan.extensionCount || 0}`}</h4>
-              <span>{`Risk ${Math.round((scan.risk ?? 0) * 100)}%`}</span>
+              <div>
+                <h4>{`Extensions: ${scan.extensionCount || 0}`}</h4>
+                <span className="mini-label">Permission footprint</span>
+              </div>
+              <span className={`risk-badge risk-${(scan.risk ?? 0) >= 0.5 ? "high" : (scan.risk ?? 0) >= 0.2 ? "medium" : "low"}`}>
+                Risk {Math.round((scan.risk ?? 0) * 100)}%
+              </span>
             </div>
-            <p className="extension-scan-reasons">{(scan.reasons || []).slice(0, 3).join(" • ")}</p>
-            <details>
+
+            <p className="extension-scan-reasons">{(scan.reasons || []).slice(0, 3).join(" • ") || "No notable extension exposure risks"}</p>
+
+            <details className="detail-list">
               <summary>Installed extensions (exposure details)</summary>
-              <ul>
+              <ul className="detail-list-items extension-detail-items">
                 {(scan.extensions || []).map((ext) => (
-                  <li key={ext.id} style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <li key={ext.id}>
+                    <div className="extension-item-head">
                       <strong>{ext.name}</strong>
-                      <span style={{ color: "#666", fontSize: 12 }}>{`id: ${ext.id.slice(0, 12)}`}</span>
-                      {ext.installType === "development" || ext.installType === "sideload" ? (
-                        <span style={{ marginLeft: 8, padding: "2px 6px", background: "#ffe8e6", color: "#a33", borderRadius: 6, fontSize: 12 }}>Sideloaded / Dev</span>
-                      ) : null}
-                      {!ext.enabled ? <span style={{ marginLeft: 8, fontSize: 12, color: "#666" }}>disabled</span> : null}
+                      <span className="extension-id">id: {ext.id.slice(0, 12)}</span>
+                      {(ext.installType === "development" || ext.installType === "sideload") && (
+                        <span className="status-pill warning">Sideloaded / Dev</span>
+                      )}
+                      {!ext.enabled && <span className="status-pill muted">disabled</span>}
                     </div>
-                    <div style={{ marginTop: 6 }}>{`install: ${ext.installType || "-"}, enabled: ${ext.enabled ? "yes" : "no"}`}</div>
-                    <div style={{ marginTop: 6 }}>
-                      <em>Permissions:</em> {(ext.permissions || []).join(", ") || "none"}
-                    </div>
-                    <div>
-                      <em>Host permissions:</em> {(ext.hostPermissions || []).slice(0, 4).join(", ") || "none"}
-                    </div>
-                    <div style={{ marginTop: 4 }}>
+                    <div className="extension-meta">install: {ext.installType || "-"}, enabled: {ext.enabled ? "yes" : "no"}</div>
+                    <div className="extension-meta"><em>Permissions:</em> {(ext.permissions || []).join(", ") || "none"}</div>
+                    <div className="extension-meta"><em>Host permissions:</em> {(ext.hostPermissions || []).slice(0, 4).join(", ") || "none"}</div>
+                    <div className="extension-item-foot">
                       <span>Risk: {Math.round((ext.risk ?? 0) * 100)}%</span>
-                      <div style={{ fontSize: 12, color: "#555" }}>{(ext.reasons || []).slice(0, 2).join(" • ")}</div>
+                      <small>{(ext.reasons || []).slice(0, 2).join(" • ") || "No specific concern"}</small>
                     </div>
                   </li>
                 ))}

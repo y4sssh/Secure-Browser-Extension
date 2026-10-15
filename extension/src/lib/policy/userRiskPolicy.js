@@ -92,7 +92,7 @@ export function evaluateUserRiskPolicy(policy = {}, evidence = {}) {
   const riskThreshold = clampScore(normalized.riskThreshold, 0, 100);
   const warnThreshold = clampScore(normalized.warnThreshold, 0, 100);
 
-  if (finalTrustScore <= warnThreshold || reasons.some((reason) => /brand|impersonat|phish/i.test(String(reason)))) {
+  if (finalTrustScore <= warnThreshold || reasons.some(isHighConfidenceRiskReason)) {
     return {
       action: "warn",
       policy: normalized,
@@ -113,6 +113,14 @@ export function evaluateUserRiskPolicy(policy = {}, evidence = {}) {
     policy: normalized,
     reason: `${hostname || "This host"} is within the user-configured baseline policy`,
   };
+}
+
+function isHighConfidenceRiskReason(reason) {
+  // Do not treat a broad word such as "phishing" in a low-weight heuristic
+  // explanation as proof of danger. Login and recovery pages legitimately
+  // contain those words. Policy escalation needs a concrete mismatch or an
+  // unsafe credential destination.
+  return /brand impersonation|claims .* identity|outside (its )?expected domains|different domain|submits over http|embedded credentials|hostname is an ip address|punycode|form submit destination changed/i.test(String(reason));
 }
 
 function normalizePolicy(policy = {}) {

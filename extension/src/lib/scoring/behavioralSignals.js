@@ -4,6 +4,7 @@ export function scoreBehavioralSignals({
   timeline = [],
   redirectCount = 0,
   brandRisk = 0,
+  trustedBrandHost = false,
 } = {}) {
   const safeForms = Array.isArray(forms) ? forms : [];
   const reasons = [];
@@ -26,8 +27,8 @@ export function scoreBehavioralSignals({
     (total, form) => total + safeCount(form?.antiAnalysisSignalCount),
     0,
   );
-  const crossOriginForms = safeForms.reduce(
-    (total, form) => total + (form?.actionIsCrossOrigin ? 1 : 0),
+  const crossDomainForms = safeForms.reduce(
+    (total, form) => total + (form?.actionIsCrossDomain ? 1 : 0),
     0,
   );
   const actionChanges = countTimelineEvent(timeline, "form_action_changed");
@@ -35,16 +36,17 @@ export function scoreBehavioralSignals({
     countTimelineEvent(timeline, "delayed_password_field") +
     countTimelineEvent(timeline, "delayed_login_form");
   const overlayForms = safeForms.filter((form) => Boolean(form?.loginOverlay)).length;
+  const hasCorroboratingCredentialRisk = crossDomainForms > 0 || brandRisk > 0.55;
 
   if (redirectCount >= 2) {
     add(0.16, "Repeated redirects suggest a deceptive credential flow");
   }
 
-  if (actionChanges > 0) {
+  if (!trustedBrandHost && hasCorroboratingCredentialRisk && actionChanges > 0) {
     add(0.18, "Form action changed after page load, which is a common phishing tactic");
   }
 
-  if (delayedLoginForms > 0) {
+  if (!trustedBrandHost && hasCorroboratingCredentialRisk && delayedLoginForms > 0) {
     add(0.14, "Login fields appeared after the page became active, indicating a delayed injection");
   }
 
@@ -56,11 +58,11 @@ export function scoreBehavioralSignals({
     add(0.12, "The page uses anti-analysis behaviors to hide credential harvesting intent");
   }
 
-  if (crossOriginForms > 0) {
-    add(0.1, "Credential-looking forms submit to a different origin than the current page");
+  if (crossDomainForms > 0) {
+    add(0.1, "Credential-looking forms submit to a different domain than the current page");
   }
 
-  if (overlayForms > 0) {
+  if (!trustedBrandHost && hasCorroboratingCredentialRisk && overlayForms > 0) {
     add(0.1, "A credential overlay or fake login pane was detected");
   }
 
@@ -78,7 +80,7 @@ export function scoreBehavioralSignals({
       hiddenPasswordFieldCount: hiddenPasswordFields,
       hiddenCredentialFieldCount: hiddenCredentialFields,
       antiAnalysisSignalCount: antiAnalysisSignals,
-      crossOriginFormCount: crossOriginForms,
+      crossDomainFormCount: crossDomainForms,
       delayedLoginFormCount: delayedLoginForms,
       actionChangedCount: actionChanges,
       redirectCount,
@@ -111,8 +113,12 @@ export function scoreThreatIntelSignals({
     add(0.22, "Host is an IP address instead of a normal brand domain");
   }
 
-  if (/(login|signin|verify|secure|account|confirm|update|wallet|help)/i.test(host)) {
-    add(0.12, "Hostname pattern resembles an impersonation or credential-harvesting page");
+  // Providers commonly use names such as accounts, login, verify, and secure
+  // on genuine authentication hosts. A keyword-only hostname match is not
+  // enough evidence to downgrade a site; require a separate risk signal.
+  if (/(login|signin|verify|secure|account|confirm|update|wallet|help)/i.test(host) &&
+      (brandDomainMismatch || pageRisk >= 0.25)) {
+    add(0.12, "Hostname pattern reinforces other impersonation or credential-harvesting signals");
   }
 
   if (brandDomainMismatch) {

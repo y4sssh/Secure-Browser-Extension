@@ -167,6 +167,12 @@ export function getAlertSeverity(score) {
 function collectTopReasons(...reasonGroups) {
   return reasonGroups
     .flatMap((group) => (Array.isArray(group) ? group : []))
+    .map((reason) =>
+      typeof reason === "string"
+        ? { message: reason, weight: 0 }
+        : { message: reason?.message, weight: Number(reason?.weight) || 0 },
+    )
+    .filter((reason) => Boolean(reason.message))
     .sort((left, right) => right.weight - left.weight)
     .map((reason) => reason.message)
     .filter((reason, index, allReasons) => allReasons.indexOf(reason) === index)

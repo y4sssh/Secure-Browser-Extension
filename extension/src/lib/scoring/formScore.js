@@ -6,6 +6,7 @@ export function scoreForms({
   suspectedCredentialIframeCount = 0,
   claimedBrands = [],
   timeline = [],
+  trustedBrandHost = false,
 } = {}) {
   const parsedPageUrl = parseUrl(pageUrl);
   const aggregate = summarizeForms(forms, {
@@ -75,11 +76,19 @@ export function scoreForms({
     add(0.32, "A credential submit button can send data over HTTP");
   }
 
-  if (aggregate.delayedPasswordFieldCount > 0 || aggregate.delayedLoginFormCount > 0) {
+  const hasCredentialDestinationRisk =
+    aggregate.crossDomainCredentialFormCount > 0 ||
+    aggregate.insecureSubmitCount > 0 ||
+    aggregate.brandedCrossDomainCredentialFormCount > 0;
+
+  // Modern sites frequently hydrate their login UI after initial load or show
+  // it in a modal. Timing and presentation alone are not proof of phishing;
+  // escalate them only when the form also sends credentials somewhere unsafe.
+  if (!trustedBrandHost && hasCredentialDestinationRisk && (aggregate.delayedPasswordFieldCount > 0 || aggregate.delayedLoginFormCount > 0)) {
     floor(0.82, "Login form appeared after page load");
   }
 
-  if (aggregate.actionChangedCount > 0) {
+  if (!trustedBrandHost && hasCredentialDestinationRisk && aggregate.actionChangedCount > 0) {
     floor(aggregate.passwordFieldCount > 0 ? 0.8 : 0.56, "Form submit destination changed after page load");
   }
 
@@ -119,7 +128,7 @@ export function scoreForms({
     add(0.16, "Login-looking iframe could not be inspected directly");
   }
 
-  if (aggregate.loginOverlayCount > 0) {
+  if (!trustedBrandHost && hasCredentialDestinationRisk && aggregate.loginOverlayCount > 0) {
     add(0.18, "Credential form appears inside an overlay");
   }
 

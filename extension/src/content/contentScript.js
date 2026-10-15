@@ -43,6 +43,7 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
   let previousBodyInert = false;
   let previousDocumentOverflow = "";
   let previousDocumentScrollBehavior = "";
+  let previousDocumentFilter = "";
   let frozenScrollPosition = null;
   let riskLockdownActive = false;
   let riskLockdownGuard = null;
@@ -166,15 +167,33 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     }
 
     if (document.body) {
-      document.body.style.pointerEvents = "none";
-      document.body.style.userSelect = "none";
-      document.body.setAttribute("aria-hidden", "true");
-      document.body.inert = true;
+      // The observer below also watches attributes. Only write when a page has
+      // changed a protected value; writing the same inline styles from the
+      // observer callback creates an endless mutation loop that can starve UI
+      // events, including the explicit Continue confirmation.
+      if (document.body.style.pointerEvents !== "none") {
+        document.body.style.pointerEvents = "none";
+      }
+      if (document.body.style.userSelect !== "none") {
+        document.body.style.userSelect = "none";
+      }
+      if (document.body.getAttribute("aria-hidden") !== "true") {
+        document.body.setAttribute("aria-hidden", "true");
+      }
+      if (!document.body.inert) {
+        document.body.inert = true;
+      }
     }
 
-    document.documentElement.style.overflow = "hidden";
-    document.documentElement.style.scrollBehavior = "auto";
-    document.documentElement.style.filter = "saturate(0.65) brightness(0.85)";
+    if (document.documentElement.style.overflow !== "hidden") {
+      document.documentElement.style.overflow = "hidden";
+    }
+    if (document.documentElement.style.scrollBehavior !== "auto") {
+      document.documentElement.style.scrollBehavior = "auto";
+    }
+    if (document.documentElement.style.filter !== "saturate(0.65) brightness(0.85)") {
+      document.documentElement.style.filter = "saturate(0.65) brightness(0.85)";
+    }
 
     if (frozenScrollPosition) {
       window.scrollTo(frozenScrollPosition.x, frozenScrollPosition.y);
@@ -640,6 +659,7 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
 
     previousDocumentOverflow = document.documentElement.style.overflow || "";
     previousDocumentScrollBehavior = document.documentElement.style.scrollBehavior || "";
+    previousDocumentFilter = document.documentElement.style.filter || "";
     frozenScrollPosition = { x: window.scrollX, y: window.scrollY };
     enforceRiskLockdownFreeze();
     overlay.style.pointerEvents = "auto";
@@ -704,7 +724,7 @@ import { initPasswordAnalyzer } from "./passwordAnalyzer";
     document.documentElement.style.pointerEvents = "";
     document.documentElement.style.overflow = previousDocumentOverflow;
     document.documentElement.style.scrollBehavior = previousDocumentScrollBehavior;
-    document.documentElement.style.filter = "";
+    document.documentElement.style.filter = previousDocumentFilter;
     riskLockdownActive = false;
     removeRiskLockdownGuard();
     stopRiskLockdownPersistence();

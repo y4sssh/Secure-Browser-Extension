@@ -11,6 +11,7 @@ test("ensureLatestPageScan requests a page scan when no evidence is stored yet",
   let readCount = 0;
 
   const evidence = {
+    tabId: 42,
     url: "https://example.com/login",
     verdict: "risky",
     reasons: ["Fake login form detected"],
@@ -58,6 +59,38 @@ test("ensureLatestPageScan skips unsupported tab URLs before sending a connectio
     error: "This page does not support live scanning.",
   });
   assert.equal(calls.length, 0);
+});
+
+test("ensureLatestPageScan never shows evidence from another tab", async () => {
+  const calls = [];
+  const staleEvidence = {
+    tabId: 7,
+    url: "https://phishing.example/login",
+    verdict: "risky",
+  };
+  const activeEvidence = {
+    tabId: 42,
+    url: "https://www.instagram.com/",
+    verdict: "trusted",
+  };
+  let reads = 0;
+
+  const result = await ensureLatestPageScan({
+    readLatestEvidence: async () => {
+      reads += 1;
+      return reads === 1 ? staleEvidence : activeEvidence;
+    },
+    queryActiveTab: async () => ({ id: 42, url: "https://www.instagram.com/?locale=en" }),
+    sendTabMessage: async (tabId, message) => {
+      calls.push({ tabId, message });
+      return { ok: true };
+    },
+    waitMs: 0,
+  });
+
+  assert.deepEqual(result, { evidence: activeEvidence, error: "" });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].tabId, 42);
 });
 
 test("sendTabMessage injects the content script and retries when an existing tab has no receiver", async () => {

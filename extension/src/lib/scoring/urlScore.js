@@ -86,7 +86,10 @@ export function scoreUrl(urlValue, options = {}) {
   }
   if (features.domainLooksRandom) add(0.11, "Domain name looks randomly generated");
   if (features.percentEncodedCount >= 3) add(0.06, "URL uses repeated percent encoding");
-  if (features.suspiciousTokenCount > 0) {
+  // Login and recovery paths are expected on the verified domain of the brand
+  // named in the URL. Treat them as suspicious only when that brand/domain
+  // relationship is not established.
+  if (features.suspiciousTokenCount > 0 && !features.brandKeywords.some((brand) => isAllowedBrandHost(brand, features.hostname, features.registrableDomain))) {
     add(Math.min(0.16, features.suspiciousTokenCount * 0.04), "URL contains security-themed words often used in phishing");
   }
   if (features.brandDomainMismatch) {
@@ -131,6 +134,7 @@ export function extractUrlFeatures(urlValue, options = {}) {
     https: parsed.protocol === "https:",
     protocol: parsed.protocol.replace(":", ""),
     hostnameLength,
+    hostname,
     urlLength: parsed.href.length,
     pathLength: parsed.pathname.length,
     queryLength: parsed.search.length,

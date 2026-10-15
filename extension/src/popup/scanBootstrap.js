@@ -9,20 +9,20 @@ export async function ensureLatestPageScan({
   setStatus = () => {},
 }) {
   let lastError = "";
+  const tab = await queryActiveTab();
+
+  if (!tab?.id) {
+    return { evidence: null, error: "No active tab is available to scan." };
+  }
+
+  if (!/^https?:\/\//i.test(tab.url || "")) {
+    return { evidence: null, error: "This page does not support live scanning." };
+  }
 
   for (let attempt = 0; attempt < retries; attempt += 1) {
     const currentEvidence = await readLatestEvidence();
-    if (currentEvidence) {
+    if (isEvidenceForActiveTab(currentEvidence, tab)) {
       return { evidence: currentEvidence, error: "" };
-    }
-
-    const tab = await queryActiveTab();
-    if (!tab?.id) {
-      return { evidence: null, error: "No active tab is available to scan." };
-    }
-
-    if (!/^https?:\/\//i.test(tab.url || "")) {
-      return { evidence: null, error: "This page does not support live scanning." };
     }
 
     setStatus(`Scanning active tab${attempt > 0 ? ` (${attempt + 1}/${retries})` : ""}`);
@@ -41,4 +41,25 @@ export async function ensureLatestPageScan({
   }
 
   return { evidence: null, error: lastError || "No scan available for the active tab." };
+}
+
+// Evidence is stored across all tabs. Never let a previously scanned phishing
+// page appear as the assessment for the tab the user is currently viewing.
+function isEvidenceForActiveTab(evidence, tab) {
+  if (!evidence || evidence.tabId !== tab.id) {
+    return false;
+  }
+
+  return sanitizeComparableUrl(evidence.url) === sanitizeComparableUrl(tab.url);
+}
+
+function sanitizeComparableUrl(value) {
+  try {
+    const url = new URL(value);
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "";
+  }
 }

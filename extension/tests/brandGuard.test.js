@@ -4,6 +4,7 @@ import { scoreBrandGuard, scoreTextSignals } from "../src/lib/scoring/brandGuard
 import { calculateFinalScore } from "../src/lib/scoring/finalScore.js";
 import { scoreForms } from "../src/lib/scoring/formScore.js";
 import { scoreUrl } from "../src/lib/scoring/urlScore.js";
+import { scoreVisualBrandMismatch } from "../src/lib/scoring/visualBrandMismatch.js";
 
 const FAKE_BRAND_CASES = [
   {
@@ -90,6 +91,68 @@ test("BrandGuard allows a claimed Microsoft login on an expected Microsoft domai
 
   assert.equal(brandResult.features.domainMismatch, false);
   assert.ok(brandResult.risk < 0.5);
+});
+
+test("legitimate branded login pages retain a trusted score", () => {
+  const pageUrl = "https://accounts.google.com/signin/v2/identifier";
+  const forms = [credentialFormFor(pageUrl)];
+  const textSignals = textSignalsFor(["Google Account", "Sign in", "Verify it is you"], "Google");
+  const urlResult = scoreUrl(pageUrl);
+  const formResult = scoreForms({ pageUrl, forms, claimedBrands: ["Google"] });
+  const brandResult = scoreBrandGuard({
+    pageUrl,
+    claimedBrands: ["Google"],
+    forms,
+    textSignals,
+    urlFeatures: urlResult.features,
+  });
+  const visualResult = scoreVisualBrandMismatch({
+    pageUrl,
+    hostname: "accounts.google.com",
+    title: "Sign in - Google Accounts",
+    favicon: "https://accounts.google.com/favicon.ico",
+    textSignals,
+    forms,
+  });
+  const finalResult = calculateFinalScore({ urlResult, formResult, brandResult, visualResult, hostname: "accounts.google.com" });
+
+  assert.equal(brandResult.features.domainMismatch, false);
+  assert.equal(brandResult.risk, 0);
+  assert.equal(visualResult.mismatch, false);
+  assert.equal(visualResult.risk, 0);
+  assert.equal(finalResult.verdict, "trusted");
+  assert.ok(finalResult.scores.finalTrustScore >= 80);
+});
+
+test("Instagram's verified domain is not downgraded for its dynamically rendered login UI", () => {
+  const pageUrl = "https://www.instagram.com/";
+  const forms = [{
+    ...credentialFormFor(pageUrl),
+    loginOverlay: true,
+  }];
+  const textSignals = textSignalsFor(["Instagram", "Log in to Instagram"], "Instagram");
+  const urlResult = scoreUrl(pageUrl);
+  const brandResult = scoreBrandGuard({
+    pageUrl,
+    claimedBrands: ["Instagram"],
+    forms,
+    textSignals,
+    urlFeatures: urlResult.features,
+  });
+  const trustedBrandHost = brandResult.features.claimedBrands.length > 0 && !brandResult.features.domainMismatch;
+  const formResult = scoreForms({
+    pageUrl,
+    forms,
+    claimedBrands: ["Instagram"],
+    trustedBrandHost,
+    timeline: [{ event: "delayed_password_field" }, { event: "login_overlay_detected" }],
+  });
+  const finalResult = calculateFinalScore({ urlResult, formResult, brandResult, hostname: "www.instagram.com" });
+
+  assert.equal(trustedBrandHost, true);
+  assert.equal(formResult.risk, 0.08);
+  assert.equal(finalResult.verdict, "trusted");
+  assert.ok(finalResult.scores.finalTrustScore >= 80);
 });
 
 test("safe text scoring uses snippets without requiring full page body", () => {
